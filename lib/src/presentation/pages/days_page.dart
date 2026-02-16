@@ -5,8 +5,9 @@ import '../../config/app_config.dart';
 import '../../data/models/day_models.dart';
 import '../../data/repositories/larevira_repository.dart';
 import '../favorites/favorites_controller.dart';
+import '../time/simulated_clock_controller.dart';
 import '../widgets/app_scaffold_background.dart';
-import 'day_detail_page.dart';
+import 'day_brotherhoods_page.dart';
 
 class DaysPage extends StatefulWidget {
   const DaysPage({
@@ -14,11 +15,13 @@ class DaysPage extends StatefulWidget {
     required this.repository,
     required this.config,
     required this.favoritesController,
+    required this.simulatedClockController,
   });
 
   final LareviraRepository repository;
   final AppConfig config;
   final FavoritesController favoritesController;
+  final SimulatedClockController simulatedClockController;
 
   @override
   State<DaysPage> createState() => _DaysPageState();
@@ -26,6 +29,28 @@ class DaysPage extends StatefulWidget {
 
 class _DaysPageState extends State<DaysPage> {
   late String _mode = widget.config.mode;
+  late Future<List<DayIndexItem>> _daysFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _daysFuture = _loadDays();
+  }
+
+  Future<List<DayIndexItem>> _loadDays() {
+    return widget.repository.getDays(
+      citySlug: widget.config.citySlug,
+      year: widget.config.editionYear,
+      mode: _mode,
+    );
+  }
+
+  void _onModeChanged(String mode) {
+    setState(() {
+      _mode = mode;
+      _daysFuture = _loadDays();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +79,9 @@ class _DaysPageState extends State<DaysPage> {
                               size: 16,
                               color: Color(0xFF8B1E3F),
                             ),
-                            label: Text('${widget.favoritesController.all.length} favoritas'),
+                            label: Text(
+                              '${widget.favoritesController.all.length} favoritas',
+                            ),
                           );
                         },
                       ),
@@ -68,18 +95,14 @@ class _DaysPageState extends State<DaysPage> {
                       ButtonSegment(value: 'official', label: Text('Oficial')),
                     ],
                     selected: {_mode},
-                    onSelectionChanged: (value) => setState(() => _mode = value.first),
+                    onSelectionChanged: (value) => _onModeChanged(value.first),
                   ),
                 ],
               ),
             ),
             Expanded(
               child: FutureBuilder<List<DayIndexItem>>(
-                future: widget.repository.getDays(
-                  citySlug: widget.config.citySlug,
-                  year: widget.config.editionYear,
-                  mode: _mode,
-                ),
+                future: _daysFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState != ConnectionState.done) {
                     return const Center(child: CircularProgressIndicator());
@@ -105,17 +128,18 @@ class _DaysPageState extends State<DaysPage> {
                         child: ListTile(
                           title: Text(day.name),
                           subtitle: Text(startsAt),
-                          trailing: Chip(label: Text('${day.processionEventsCount}')),
+                          trailing: const Icon(Icons.chevron_right),
                           onTap: () {
                             Navigator.of(context).push(
                               MaterialPageRoute<void>(
-                                builder: (_) => DayDetailPage(
+                                builder: (_) => DayBrotherhoodsPage(
                                   daySlug: day.slug,
-                                  title: day.name,
+                                  dayName: day.name,
+                                  mode: _mode,
                                   repository: widget.repository,
                                   config: widget.config,
-                                  mode: _mode,
                                   favoritesController: widget.favoritesController,
+                                  simulatedClockController: widget.simulatedClockController,
                                 ),
                               ),
                             );
@@ -123,8 +147,7 @@ class _DaysPageState extends State<DaysPage> {
                         ),
                       );
                     },
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: 8),
+                    separatorBuilder: (context, index) => const SizedBox(height: 8),
                     itemCount: days.length,
                   );
                 },

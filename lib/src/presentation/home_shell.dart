@@ -8,6 +8,8 @@ import 'pages/brotherhoods_page.dart';
 import 'pages/days_page.dart';
 import 'pages/more_page.dart';
 import 'pages/today_page.dart';
+import 'time/simulated_clock_controller.dart';
+import 'theme/theme_controller.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({
@@ -16,12 +18,16 @@ class HomeShell extends StatefulWidget {
     required this.config,
     required this.favoritesController,
     required this.offlineSyncController,
+    required this.themeController,
+    required this.simulatedClockController,
   });
 
   final LareviraRepository repository;
   final AppConfig config;
   final FavoritesController favoritesController;
   final OfflineSyncController offlineSyncController;
+  final ThemeController themeController;
+  final SimulatedClockController simulatedClockController;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -37,20 +43,25 @@ class _HomeShellState extends State<HomeShell> {
         repository: widget.repository,
         config: widget.config,
         favoritesController: widget.favoritesController,
+        simulatedClockController: widget.simulatedClockController,
       ),
       DaysPage(
         repository: widget.repository,
         config: widget.config,
         favoritesController: widget.favoritesController,
+        simulatedClockController: widget.simulatedClockController,
       ),
       BrotherhoodsPage(
         repository: widget.repository,
         config: widget.config,
         favoritesController: widget.favoritesController,
+        simulatedClockController: widget.simulatedClockController,
       ),
       MorePage(
         config: widget.config,
         offlineSyncController: widget.offlineSyncController,
+        themeController: widget.themeController,
+        simulatedClockController: widget.simulatedClockController,
       ),
     ];
 

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+
 class AppScaffoldBackground extends StatelessWidget {
   const AppScaffoldBackground({super.key, required this.child});
 
@@ -7,12 +9,14 @@ class AppScaffoldBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFFF7F0E8), Color(0xFFF3E3CC)],
+          colors: AppColors.scaffoldGradient(isDark: isDark),
         ),
       ),
       child: child,

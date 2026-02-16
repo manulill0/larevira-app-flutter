@@ -4,12 +4,14 @@ class AppConfig {
     required this.citySlug,
     required this.editionYear,
     required this.mode,
+    required this.simulatedNowFromEnv,
   });
 
   final String baseUrl;
   final String citySlug;
   final int editionYear;
   final String mode;
+  final DateTime? simulatedNowFromEnv;
 
   static const _validModes = {'all', 'live', 'official'};
 
@@ -27,12 +29,19 @@ class AppConfig {
       defaultValue: '2026',
     );
     const rawMode = String.fromEnvironment('MODE', defaultValue: 'all');
+    const rawSimulatedNow = String.fromEnvironment(
+      'SIMULATED_NOW',
+      defaultValue: '',
+    );
 
     return AppConfig(
       baseUrl: rawBaseUrl,
       citySlug: rawCitySlug,
       editionYear: int.tryParse(rawEditionYear) ?? 2026,
       mode: _validModes.contains(rawMode) ? rawMode : 'all',
+      simulatedNowFromEnv: rawSimulatedNow.isEmpty
+          ? null
+          : DateTime.tryParse(rawSimulatedNow),
     );
   }
 }

@@ -42,6 +42,48 @@
         "--dart-define=EDITION_YEAR=2025",
         "--dart-define=MODE=all"
       ]
+    },
+    {
+      "name": "Flutter Android (Debug)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "R5CTC03Z49X",
+      "flutterMode": "debug",
+      "toolArgs": [
+        "--dart-define=API_BASE_URL=http://192.168.1.89:8001/api/v1",
+        "--dart-define=CITY_SLUG=sevilla",
+        "--dart-define=EDITION_YEAR=2025",
+        "--dart-define=MODE=all"
+      ]
+    },
+    {
+      "name": "Flutter Android (Profile)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "R5CTC03Z49X",
+      "flutterMode": "profile",
+      "toolArgs": [
+        "--dart-define=API_BASE_URL=http://192.168.1.89:8001/api/v1",
+        "--dart-define=CITY_SLUG=sevilla",
+        "--dart-define=EDITION_YEAR=2025",
+        "--dart-define=MODE=all"
+      ]
+    },
+    {
+      "name": "Flutter Android (Release)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "R5CTC03Z49X",
+      "flutterMode": "release",
+      "toolArgs": [
+        "--dart-define=API_BASE_URL=http://192.168.1.89:8001/api/v1",
+        "--dart-define=CITY_SLUG=sevilla",
+        "--dart-define=EDITION_YEAR=2025",
+        "--dart-define=MODE=all"
+      ]
     }
   ]
 }

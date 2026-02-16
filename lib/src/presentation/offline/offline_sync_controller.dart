@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config/app_config.dart';
+import '../../data/models/brotherhood_model.dart';
 import '../../data/models/day_models.dart';
 import '../../data/repositories/larevira_repository.dart';
 
@@ -73,7 +74,7 @@ class OfflineSyncController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final brotherhoods = await repository.getBrotherhoods(
+      final brotherhoods = await repository.syncBrotherhoods(
         citySlug: config.citySlug,
         year: config.editionYear,
       );
@@ -82,7 +83,7 @@ class OfflineSyncController extends ChangeNotifier {
       final daysByMode = <String, List<DayIndexItem>>{};
 
       for (final mode in dayModes) {
-        final days = await repository.getDays(
+        final days = await repository.syncDays(
           citySlug: config.citySlug,
           year: config.editionYear,
           mode: mode,
@@ -90,23 +91,15 @@ class OfflineSyncController extends ChangeNotifier {
         daysByMode[mode] = days;
       }
 
-      totalSteps =
-          brotherhoods.length + daysByMode.values.fold<int>(0, (sum, v) => sum + v.length);
+      totalSteps = brotherhoods.length +
+          daysByMode.values.fold<int>(0, (sum, v) => sum + v.length);
       notifyListeners();
 
-      for (final brotherhood in brotherhoods) {
-        await repository.getBrotherhoodDetail(
-          citySlug: config.citySlug,
-          year: config.editionYear,
-          brotherhoodSlug: brotherhood.slug,
-        );
-        completedSteps += 1;
-        notifyListeners();
-      }
+      await _syncBrotherhoodDetails(brotherhoods);
 
       for (final entry in daysByMode.entries) {
         for (final day in entry.value) {
-          await repository.getDayDetail(
+          await repository.syncDayBrotherhoods(
             citySlug: config.citySlug,
             year: config.editionYear,
             daySlug: day.slug,
@@ -124,6 +117,21 @@ class OfflineSyncController extends ChangeNotifier {
     } finally {
       isSyncing = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> _syncBrotherhoodDetails(List<BrotherhoodItem> brotherhoods) async {
+    for (final brotherhood in brotherhoods) {
+      try {
+        await repository.syncBrotherhoodDetail(
+          citySlug: config.citySlug,
+          year: config.editionYear,
+          brotherhoodSlug: brotherhood.slug,
+        );
+      } finally {
+        completedSteps += 1;
+        notifyListeners();
+      }
     }
   }
 }

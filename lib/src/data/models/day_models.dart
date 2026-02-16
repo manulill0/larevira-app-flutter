@@ -15,8 +15,45 @@ class DayIndexItem {
     return DayIndexItem(
       slug: (json['slug'] ?? '') as String,
       name: (json['name'] ?? 'Jornada') as String,
-      startsAt: DateTime.tryParse((json['starts_at'] ?? '') as String),
+      startsAt: _parseDateTimeWallClock((json['starts_at'] ?? '') as String),
       processionEventsCount: (json['procession_events_count'] as num?)?.toInt() ?? 0,
     );
   }
+}
+
+DateTime? _parseDateTimeWallClock(String raw) {
+  final value = raw.trim();
+  if (value.isEmpty) {
+    return null;
+  }
+
+  final match = RegExp(
+    r'^(\\d{4})-(\\d{2})-(\\d{2})[T ](\\d{2}):(\\d{2})(?::(\\d{2}))?',
+  ).firstMatch(value);
+  if (match != null) {
+    return DateTime(
+      int.parse(match.group(1)!),
+      int.parse(match.group(2)!),
+      int.parse(match.group(3)!),
+      int.parse(match.group(4)!),
+      int.parse(match.group(5)!),
+      int.parse(match.group(6) ?? '0'),
+    );
+  }
+
+  final parsed = DateTime.tryParse(value);
+  if (parsed == null) {
+    return null;
+  }
+
+  return DateTime(
+    parsed.year,
+    parsed.month,
+    parsed.day,
+    parsed.hour,
+    parsed.minute,
+    parsed.second,
+    parsed.millisecond,
+    parsed.microsecond,
+  );
 }

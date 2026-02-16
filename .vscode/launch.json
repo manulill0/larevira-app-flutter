@@ -12,7 +12,25 @@
         "--dart-define=API_BASE_URL=http://192.168.1.89:8001/api/v1",
         "--dart-define=CITY_SLUG=sevilla",
         "--dart-define=EDITION_YEAR=2025",
-        "--dart-define=MODE=all"
+        "--dart-define=MODE=all",
+        "--dart-define=MAPBOX_ACCESS_TOKEN=${env:MAPBOX_ACCESS_TOKEN}",
+        "--dart-define=MAPBOX_STYLE_URI=mapbox://styles/mapbox/streets-v12"
+      ]
+    },
+    {
+      "name": "Flutter iPad (Debug)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "00008020-000A38103CE1002E",
+      "flutterMode": "debug",
+      "toolArgs": [
+        "--dart-define=API_BASE_URL=http://192.168.1.89:8001/api/v1",
+        "--dart-define=CITY_SLUG=sevilla",
+        "--dart-define=EDITION_YEAR=2025",
+        "--dart-define=MODE=all",
+        "--dart-define=MAPBOX_ACCESS_TOKEN=${env:MAPBOX_ACCESS_TOKEN}",
+        "--dart-define=MAPBOX_STYLE_URI=mapbox://styles/mapbox/streets-v12"
       ]
     },
     {
@@ -26,7 +44,9 @@
         "--dart-define=API_BASE_URL=http://192.168.1.89:8001/api/v1",
         "--dart-define=CITY_SLUG=sevilla",
         "--dart-define=EDITION_YEAR=2025",
-        "--dart-define=MODE=all"
+        "--dart-define=MODE=all",
+        "--dart-define=MAPBOX_ACCESS_TOKEN=${env:MAPBOX_ACCESS_TOKEN}",
+        "--dart-define=MAPBOX_STYLE_URI=mapbox://styles/mapbox/streets-v12"
       ]
     },
     {
@@ -40,7 +60,9 @@
         "--dart-define=API_BASE_URL=http://192.168.1.89:8001/api/v1",
         "--dart-define=CITY_SLUG=sevilla",
         "--dart-define=EDITION_YEAR=2025",
-        "--dart-define=MODE=all"
+        "--dart-define=MODE=all",
+        "--dart-define=MAPBOX_ACCESS_TOKEN=${env:MAPBOX_ACCESS_TOKEN}",
+        "--dart-define=MAPBOX_STYLE_URI=mapbox://styles/mapbox/streets-v12"
       ]
     },
     {
@@ -54,7 +76,9 @@
         "--dart-define=API_BASE_URL=http://192.168.1.89:8001/api/v1",
         "--dart-define=CITY_SLUG=sevilla",
         "--dart-define=EDITION_YEAR=2025",
-        "--dart-define=MODE=all"
+        "--dart-define=MODE=all",
+        "--dart-define=MAPBOX_ACCESS_TOKEN=${env:MAPBOX_ACCESS_TOKEN}",
+        "--dart-define=MAPBOX_STYLE_URI=mapbox://styles/mapbox/streets-v12"
       ]
     },
     {
@@ -68,7 +92,9 @@
         "--dart-define=API_BASE_URL=http://192.168.1.89:8001/api/v1",
         "--dart-define=CITY_SLUG=sevilla",
         "--dart-define=EDITION_YEAR=2025",
-        "--dart-define=MODE=all"
+        "--dart-define=MODE=all",
+        "--dart-define=MAPBOX_ACCESS_TOKEN=${env:MAPBOX_ACCESS_TOKEN}",
+        "--dart-define=MAPBOX_STYLE_URI=mapbox://styles/mapbox/streets-v12"
       ]
     },
     {
@@ -82,7 +108,9 @@
         "--dart-define=API_BASE_URL=http://192.168.1.89:8001/api/v1",
         "--dart-define=CITY_SLUG=sevilla",
         "--dart-define=EDITION_YEAR=2025",
-        "--dart-define=MODE=all"
+        "--dart-define=MODE=all",
+        "--dart-define=MAPBOX_ACCESS_TOKEN=${env:MAPBOX_ACCESS_TOKEN}",
+        "--dart-define=MAPBOX_STYLE_URI=mapbox://styles/mapbox/streets-v12"
       ]
     }
   ]

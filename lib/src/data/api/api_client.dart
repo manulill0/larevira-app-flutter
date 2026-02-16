@@ -18,6 +18,7 @@ class ApiClient {
   final Dio _dio;
   static final SharedPreferencesAsync _prefs = SharedPreferencesAsync();
   static const _cachePrefix = 'http_cache_get_v1:';
+  static const _cacheIndexKey = 'http_cache_get_v1:keys';
 
   Future<Response<dynamic>> get(
     String path, {
@@ -97,6 +98,11 @@ class ApiClient {
         'data': data,
       }),
     );
+
+    final keys = await _prefs.getStringList(_cacheIndexKey) ?? const <String>[];
+    if (!keys.contains(key)) {
+      await _prefs.setStringList(_cacheIndexKey, [...keys, key]);
+    }
   }
 
   Future<dynamic> _readCache(String key) async {
@@ -110,5 +116,13 @@ class ApiClient {
     } catch (_) {
       return null;
     }
+  }
+
+  Future<void> clearHttpCache() async {
+    final keys = await _prefs.getStringList(_cacheIndexKey) ?? const <String>[];
+    for (final key in keys) {
+      await _prefs.remove(key);
+    }
+    await _prefs.remove(_cacheIndexKey);
   }
 }

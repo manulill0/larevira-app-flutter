@@ -9,6 +9,7 @@ import '../favorites/favorites_controller.dart';
 import '../time/simulated_clock_controller.dart';
 import '../utils/color_utils.dart';
 import '../widgets/app_scaffold_background.dart';
+import '../widgets/card_list_tile.dart';
 import 'day_detail_page.dart';
 
 class TodayPage extends StatefulWidget {
@@ -114,175 +115,201 @@ class _TodayPageState extends State<TodayPage> {
                   child: CustomScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     slivers: [
-                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        children: [
-                          Text(
-                            'La Revira',
-                            style: Theme.of(context).appBarTheme.titleTextStyle,
-                          ),
-                          const Spacer(),
-                          IconButton(
-                            tooltip: 'Actualizar',
-                            onPressed: _syncing ? null : () => _refresh(),
-                            icon: _syncing
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  )
-                                : const Icon(Icons.refresh),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${widget.config.citySlug.toUpperCase()} ${widget.config.editionYear} · Modo ${widget.config.mode}',
-                          ),
-                          if (widget.simulatedClockController.isSimulating) ...[
-                            const SizedBox(height: 6),
-                            Text(
-                              'Fecha simulada: ${DateFormat('EEE dd/MM/yyyy HH:mm', 'es_ES').format(widget.simulatedClockController.now)}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFFA02943),
+                      const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            children: [
+                              Text(
+                                'La Revira',
+                                style: Theme.of(
+                                  context,
+                                ).appBarTheme.titleTextStyle,
                               ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: _HeroStatusCard(days: days),
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
-                      child: ListenableBuilder(
-                        listenable: widget.favoritesController,
-                        builder: (context, child) {
-                          return FutureBuilder<List<BrotherhoodItem>>(
-                            future: _brotherhoodsFuture,
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState != ConnectionState.done ||
-                                  !snapshot.hasData) {
-                                return const SizedBox.shrink();
-                              }
-
-                              final favoriteSlugs = widget.favoritesController.all;
-                              if (favoriteSlugs.isEmpty) {
-                                return const SizedBox.shrink();
-                              }
-
-                              final favorites = snapshot.data!
-                                  .where((item) => favoriteSlugs.contains(item.slug))
-                                  .toList(growable: false);
-                              if (favorites.isEmpty) {
-                                return const SizedBox.shrink();
-                              }
-
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Tus favoritas',
-                                    style: TextStyle(fontWeight: FontWeight.w700),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: [
-                                      for (final item in favorites)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 8,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: parseHexColor(item.colorHex)
-                                                .withValues(alpha: 0.14),
-                                            borderRadius: BorderRadius.circular(999),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(
-                                                Icons.star,
-                                                size: 15,
-                                                color: parseHexColor(item.colorHex),
-                                              ),
-                                              const SizedBox(width: 5),
-                                              Text(item.name),
-                                            ],
-                                          ),
+                              const Spacer(),
+                              IconButton(
+                                tooltip: 'Actualizar',
+                                onPressed: _syncing ? null : () => _refresh(),
+                                icon: _syncing
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
                                         ),
-                                    ],
+                                      )
+                                    : const Icon(Icons.refresh),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${widget.config.citySlug.toUpperCase()} ${widget.config.editionYear} · Modo ${widget.config.mode}',
+                              ),
+                              if (widget
+                                  .simulatedClockController
+                                  .isSimulating) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Fecha simulada: ${DateFormat('EEE dd/MM/yyyy HH:mm', 'es_ES').format(widget.simulatedClockController.now)}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFFA02943),
                                   ),
-                                ],
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: _HeroStatusCard(days: days),
+                        ),
+                      ),
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
+                          child: ListenableBuilder(
+                            listenable: widget.favoritesController,
+                            builder: (context, child) {
+                              return FutureBuilder<List<BrotherhoodItem>>(
+                                future: _brotherhoodsFuture,
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState !=
+                                          ConnectionState.done ||
+                                      !snapshot.hasData) {
+                                    return const SizedBox.shrink();
+                                  }
+
+                                  final favoriteSlugs =
+                                      widget.favoritesController.all;
+                                  if (favoriteSlugs.isEmpty) {
+                                    return const SizedBox.shrink();
+                                  }
+
+                                  final favorites = snapshot.data!
+                                      .where(
+                                        (item) =>
+                                            favoriteSlugs.contains(item.slug),
+                                      )
+                                      .toList(growable: false);
+                                  if (favorites.isEmpty) {
+                                    return const SizedBox.shrink();
+                                  }
+
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Tus favoritas',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Wrap(
+                                        spacing: 8,
+                                        runSpacing: 8,
+                                        children: [
+                                          for (final item in favorites)
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 8,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: parseHexColor(
+                                                  item.colorHex,
+                                                ).withValues(alpha: 0.14),
+                                                borderRadius:
+                                                    BorderRadius.circular(999),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    Icons.star,
+                                                    size: 15,
+                                                    color: parseHexColor(
+                                                      item.colorHex,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 5),
+                                                  Text(item.name),
+                                                ],
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  );
+                                },
                               );
                             },
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    sliver: SliverList.builder(
-                      itemCount: days.length,
-                      itemBuilder: (context, index) {
-                        final day = days[index];
-                        final formatted = day.startsAt == null
-                            ? 'Sin hora de inicio'
-                            : DateFormat('EEE d MMM, HH:mm', 'es_ES').format(day.startsAt!);
-
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Card(
-                            child: ListTile(
-                              leading: const CircleAvatar(
-                                backgroundColor: Color(0xFF8B1E3F),
-                                child: Icon(Icons.access_time, color: Colors.white),
-                              ),
-                              title: Text(day.name),
-                              subtitle: Text('$formatted · ${day.processionEventsCount} cofradías'),
-                              onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => DayDetailPage(
-                                      daySlug: day.slug,
-                                      title: day.name,
-                                      repository: widget.repository,
-                                      config: widget.config,
-                                      mode: widget.config.mode,
-                                      favoritesController: widget.favoritesController,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
                           ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                        ),
+                      ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        sliver: SliverList.builder(
+                          itemCount: days.length,
+                          itemBuilder: (context, index) {
+                            final day = days[index];
+                            final formatted = day.startsAt == null
+                                ? 'Sin hora de inicio'
+                                : DateFormat(
+                                    'EEE d MMM, HH:mm',
+                                    'es_ES',
+                                  ).format(day.startsAt!);
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: CardListTile(
+                                leading: const CircleAvatar(
+                                  backgroundColor: Color(0xFF8B1E3F),
+                                  child: Icon(
+                                    Icons.access_time,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                title: Text(day.name),
+                                subtitle: Text(
+                                  '$formatted · ${day.processionEventsCount} cofradías',
+                                ),
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => DayDetailPage(
+                                        daySlug: day.slug,
+                                        title: day.name,
+                                        repository: widget.repository,
+                                        config: widget.config,
+                                        mode: widget.config.mode,
+                                        favoritesController:
+                                            widget.favoritesController,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 24)),
                     ],
                   ),
                 );
@@ -335,10 +362,7 @@ class _HeroStatusCard extends StatelessWidget {
 }
 
 class _ErrorState extends StatelessWidget {
-  const _ErrorState({
-    required this.message,
-    required this.baseUrl,
-  });
+  const _ErrorState({required this.message, required this.baseUrl});
 
   final String message;
   final String baseUrl;

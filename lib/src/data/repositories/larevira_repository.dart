@@ -305,4 +305,9 @@ class LareviraRepository {
 
     return BrotherhoodDetail.fromJson(data);
   }
+
+  Future<void> clearAllLocalCache() async {
+    await _apiClient.clearHttpCache();
+    await _appDatabase.clearAllCaches();
+  }
 }

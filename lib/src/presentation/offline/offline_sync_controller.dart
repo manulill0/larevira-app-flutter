@@ -134,4 +134,20 @@ class OfflineSyncController extends ChangeNotifier {
       }
     }
   }
+
+  Future<void> clearLocalCache() async {
+    if (isSyncing) {
+      return;
+    }
+
+    lastError = null;
+    completedSteps = 0;
+    totalSteps = 0;
+    notifyListeners();
+
+    await repository.clearAllLocalCache();
+    lastSyncedAt = null;
+    await _prefs.remove(_lastSyncKey);
+    notifyListeners();
+  }
 }

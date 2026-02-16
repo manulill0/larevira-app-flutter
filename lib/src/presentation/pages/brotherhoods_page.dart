@@ -7,6 +7,7 @@ import '../favorites/favorites_controller.dart';
 import '../time/simulated_clock_controller.dart';
 import '../utils/color_utils.dart';
 import '../widgets/app_scaffold_background.dart';
+import '../widgets/card_list_tile.dart';
 import 'brotherhood_detail_page.dart';
 
 class BrotherhoodsPage extends StatefulWidget {
@@ -30,6 +31,7 @@ class BrotherhoodsPage extends StatefulWidget {
 class _BrotherhoodsPageState extends State<BrotherhoodsPage> {
   late Future<List<BrotherhoodItem>> _future;
   bool _syncing = false;
+  String? _selectedBrotherhoodSlug;
 
   @override
   void initState() {
@@ -54,13 +56,31 @@ class _BrotherhoodsPageState extends State<BrotherhoodsPage> {
         citySlug: widget.config.citySlug,
         year: widget.config.editionYear,
       );
-      setState(() => _future = _loadLocal());
+      setState(() {
+        _future = _loadLocal();
+      });
       await _future;
     } finally {
       if (mounted) {
         setState(() => _syncing = false);
       }
     }
+  }
+
+  BrotherhoodItem? _selectedFor(List<BrotherhoodItem> brotherhoods) {
+    if (brotherhoods.isEmpty) {
+      return null;
+    }
+    final slug = _selectedBrotherhoodSlug;
+    if (slug == null) {
+      return brotherhoods.first;
+    }
+    for (final item in brotherhoods) {
+      if (item.slug == slug) {
+        return item;
+      }
+    }
+    return brotherhoods.first;
   }
 
   @override
@@ -99,76 +119,155 @@ class _BrotherhoodsPageState extends State<BrotherhoodsPage> {
                   return FutureBuilder<List<BrotherhoodItem>>(
                     future: _future,
                     builder: (context, snapshot) {
-                  if (snapshot.connectionState != ConnectionState.done) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (snapshot.hasError) {
-                    return Center(child: Text(snapshot.error.toString()));
-                  }
-
-                  final brotherhoods = [...(snapshot.data ?? const <BrotherhoodItem>[])]
-                    ..sort((a, b) {
-                      final af = widget.favoritesController.isFavorite(a.slug);
-                      final bf = widget.favoritesController.isFavorite(b.slug);
-                      if (af == bf) {
-                        return a.name.compareTo(b.name);
+                      if (snapshot.connectionState != ConnectionState.done) {
+                        return const Center(child: CircularProgressIndicator());
                       }
-                      return af ? -1 : 1;
-                    });
-                  if (brotherhoods.isEmpty) {
-                    return const Center(child: Text('No hay hermandades publicadas.'));
-                  }
+                      if (snapshot.hasError) {
+                        return Center(child: Text(snapshot.error.toString()));
+                      }
 
-                  return RefreshIndicator(
-                    onRefresh: _refresh,
-                    child: ListView.separated(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-                      itemBuilder: (context, index) {
-                        final item = brotherhoods[index];
-                        final isFavorite = widget.favoritesController.isFavorite(item.slug);
-                        return Card(
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: parseHexColor(item.colorHex),
-                              child: const Icon(Icons.church, color: Colors.white),
-                            ),
-                            title: Text(item.name),
-                            subtitle: Text(
-                              item.fullName.isEmpty ? item.slug : item.fullName,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            trailing: IconButton(
-                              onPressed: () => widget.favoritesController.toggle(item.slug),
-                              icon: Icon(
-                                isFavorite ? Icons.star : Icons.star_border,
-                                color: isFavorite ? const Color(0xFFC9983E) : null,
+                      final brotherhoods =
+                          [...(snapshot.data ?? const <BrotherhoodItem>[])]
+                            ..sort((a, b) {
+                              final af = widget.favoritesController.isFavorite(
+                                a.slug,
+                              );
+                              final bf = widget.favoritesController.isFavorite(
+                                b.slug,
+                              );
+                              if (af == bf) {
+                                return a.name.compareTo(b.name);
+                              }
+                              return af ? -1 : 1;
+                            });
+
+                      if (brotherhoods.isEmpty) {
+                        return const Center(
+                          child: Text('No hay hermandades publicadas.'),
+                        );
+                      }
+
+                      final media = MediaQuery.of(context);
+                      final isTabletLandscape =
+                          media.orientation == Orientation.landscape &&
+                          media.size.width >= 1000 &&
+                          media.size.height >= 600;
+                      final selected = _selectedFor(brotherhoods);
+
+                      if (isTabletLandscape) {
+                        return Row(
+                          children: [
+                            SizedBox(
+                              width: 380,
+                              child: RefreshIndicator(
+                                onRefresh: _refresh,
+                                child: ListView.separated(
+                                  physics:
+                                      const AlwaysScrollableScrollPhysics(),
+                                  padding: const EdgeInsets.fromLTRB(
+                                    20,
+                                    4,
+                                    12,
+                                    24,
+                                  ),
+                                  itemBuilder: (context, index) {
+                                    final item = brotherhoods[index];
+                                    final isFavorite = widget
+                                        .favoritesController
+                                        .isFavorite(item.slug);
+                                    return _BrotherhoodTile(
+                                      item: item,
+                                      isFavorite: isFavorite,
+                                      isSelected: item.slug == selected?.slug,
+                                      onToggleFavorite: () => widget
+                                          .favoritesController
+                                          .toggle(item.slug),
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedBrotherhoodSlug = item.slug;
+                                        });
+                                      },
+                                    );
+                                  },
+                                  separatorBuilder: (context, index) =>
+                                      const SizedBox(height: 8),
+                                  itemCount: brotherhoods.length,
+                                ),
                               ),
                             ),
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => BrotherhoodDetailPage(
-                                    brotherhoodSlug: item.slug,
-                                    title: item.name,
-                                    repository: widget.repository,
-                                    config: widget.config,
-                                    favoritesController: widget.favoritesController,
-                                    simulatedClockController:
-                                        widget.simulatedClockController,
-                                  ),
+                            const VerticalDivider(width: 1),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  12,
+                                  4,
+                                  20,
+                                  24,
                                 ),
-                              );
-                            },
-                          ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: selected == null
+                                      ? const Center(
+                                          child: Text(
+                                            'Selecciona una hermandad.',
+                                          ),
+                                        )
+                                      : BrotherhoodDetailPage(
+                                          brotherhoodSlug: selected.slug,
+                                          title: selected.name,
+                                          repository: widget.repository,
+                                          config: widget.config,
+                                          favoritesController:
+                                              widget.favoritesController,
+                                          simulatedClockController:
+                                              widget.simulatedClockController,
+                                          embedded: true,
+                                        ),
+                                ),
+                              ),
+                            ),
+                          ],
                         );
-                      },
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 8),
-                      itemCount: brotherhoods.length,
-                    ),
-                  );
+                      }
+
+                      return RefreshIndicator(
+                        onRefresh: _refresh,
+                        child: ListView.separated(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                          itemBuilder: (context, index) {
+                            final item = brotherhoods[index];
+                            final isFavorite = widget.favoritesController
+                                .isFavorite(item.slug);
+                            return _BrotherhoodTile(
+                              item: item,
+                              isFavorite: isFavorite,
+                              isSelected: false,
+                              onToggleFavorite: () =>
+                                  widget.favoritesController.toggle(item.slug),
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => BrotherhoodDetailPage(
+                                      brotherhoodSlug: item.slug,
+                                      title: item.name,
+                                      repository: widget.repository,
+                                      config: widget.config,
+                                      favoritesController:
+                                          widget.favoritesController,
+                                      simulatedClockController:
+                                          widget.simulatedClockController,
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(height: 8),
+                          itemCount: brotherhoods.length,
+                        ),
+                      );
                     },
                   );
                 },
@@ -177,6 +276,48 @@ class _BrotherhoodsPageState extends State<BrotherhoodsPage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _BrotherhoodTile extends StatelessWidget {
+  const _BrotherhoodTile({
+    required this.item,
+    required this.isFavorite,
+    required this.isSelected,
+    required this.onToggleFavorite,
+    required this.onTap,
+  });
+
+  final BrotherhoodItem item;
+  final bool isFavorite;
+  final bool isSelected;
+  final VoidCallback onToggleFavorite;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return CardListTile(
+      color: isSelected ? const Color(0xFFFFF4DB) : null,
+      selected: isSelected,
+      leading: CircleAvatar(
+        backgroundColor: parseHexColor(item.colorHex),
+        child: const Icon(Icons.church, color: Colors.white),
+      ),
+      title: Text(item.name),
+      subtitle: Text(
+        item.fullName.isEmpty ? item.slug : item.fullName,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: IconButton(
+        onPressed: onToggleFavorite,
+        icon: Icon(
+          isFavorite ? Icons.star : Icons.star_border,
+          color: isFavorite ? const Color(0xFFC9983E) : null,
+        ),
+      ),
+      onTap: onTap,
     );
   }
 }

@@ -7,7 +7,9 @@ import 'offline/offline_sync_controller.dart';
 import 'pages/brotherhoods_page.dart';
 import 'pages/days_page.dart';
 import 'pages/more_page.dart';
+import 'pages/planning_page.dart';
 import 'pages/today_page.dart';
+import 'planning/planning_controller.dart';
 import 'time/simulated_clock_controller.dart';
 import 'theme/theme_controller.dart';
 
@@ -17,6 +19,7 @@ class HomeShell extends StatefulWidget {
     required this.repository,
     required this.config,
     required this.favoritesController,
+    required this.planningController,
     required this.offlineSyncController,
     required this.themeController,
     required this.simulatedClockController,
@@ -25,6 +28,7 @@ class HomeShell extends StatefulWidget {
   final LareviraRepository repository;
   final AppConfig config;
   final FavoritesController favoritesController;
+  final PlanningController planningController;
   final OfflineSyncController offlineSyncController;
   final ThemeController themeController;
   final SimulatedClockController simulatedClockController;
@@ -49,6 +53,14 @@ class _HomeShellState extends State<HomeShell> {
         repository: widget.repository,
         config: widget.config,
         favoritesController: widget.favoritesController,
+        planningController: widget.planningController,
+        simulatedClockController: widget.simulatedClockController,
+      ),
+      PlanningPage(
+        repository: widget.repository,
+        config: widget.config,
+        favoritesController: widget.favoritesController,
+        planningController: widget.planningController,
         simulatedClockController: widget.simulatedClockController,
       ),
       BrotherhoodsPage(
@@ -81,6 +93,11 @@ class _HomeShellState extends State<HomeShell> {
             icon: Icon(Icons.event_note_outlined),
             selectedIcon: Icon(Icons.event_note),
             label: 'Jornadas',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.star_outline),
+            selectedIcon: Icon(Icons.star),
+            label: 'Mi planning',
           ),
           NavigationDestination(
             icon: Icon(Icons.groups_outlined),

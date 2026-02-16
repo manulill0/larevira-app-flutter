@@ -21,6 +21,7 @@ class DayDetailPage extends StatefulWidget {
     required this.config,
     required this.mode,
     required this.favoritesController,
+    this.embedded = false,
   });
 
   final String daySlug;
@@ -29,6 +30,7 @@ class DayDetailPage extends StatefulWidget {
   final LareviraRepository repository;
   final AppConfig config;
   final FavoritesController favoritesController;
+  final bool embedded;
 
   @override
   State<DayDetailPage> createState() => _DayDetailPageState();
@@ -95,13 +97,118 @@ class _DayDetailPageState extends State<DayDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final content = AppScaffoldBackground(
+      child: RefreshIndicator(
+        onRefresh: _manualRefresh,
+        child: FutureBuilder<DayDetail>(
+          future: _future,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return ListView(
+                children: const [
+                  SizedBox(height: 240),
+                  Center(child: CircularProgressIndicator()),
+                ],
+              );
+            }
+            if (snapshot.hasError) {
+              return ListView(
+                children: [
+                  const SizedBox(height: 120),
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(
+                      snapshot.error.toString(),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            final detail = snapshot.data;
+            if (detail == null) {
+              return ListView(
+                children: const [
+                  SizedBox(height: 120),
+                  Center(child: Text('Sin datos de jornada.')),
+                ],
+              );
+            }
+
+            return ListenableBuilder(
+              listenable: widget.favoritesController,
+              builder: (context, child) {
+                final favoriteSlugs = widget.favoritesController.all;
+                final orderedEvents = [...detail.processionEvents]
+                  ..sort((a, b) {
+                    final af = favoriteSlugs.contains(a.brotherhoodSlug);
+                    final bf = favoriteSlugs.contains(b.brotherhoodSlug);
+                    if (af == bf) {
+                      return a.brotherhoodName.compareTo(b.brotherhoodName);
+                    }
+                    return af ? -1 : 1;
+                  });
+
+                return ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                  children: [
+                    Text(
+                      '${detail.name} · ${detail.processionEvents.length} cofradías',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _lastUpdatedAt == null
+                          ? 'Sin actualizar'
+                          : 'Última actualización ${DateFormat('HH:mm:ss').format(_lastUpdatedAt!)}',
+                    ),
+                    if (_supportsLive) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        _autoRefresh
+                            ? 'Seguimiento en vivo activo (cada 45s).'
+                            : 'Seguimiento en vivo en pausa para ahorrar datos.',
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    for (final event in orderedEvents) ...[
+                      _ProcessionCard(
+                        event: event,
+                        isFavorite: widget.favoritesController.isFavorite(
+                          event.brotherhoodSlug,
+                        ),
+                        onToggleFavorite: () => widget.favoritesController
+                            .toggle(event.brotherhoodSlug),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                  ],
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
+
+    if (widget.embedded) {
+      return content;
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
         actions: [
           if (_supportsLive)
             IconButton(
-              tooltip: _autoRefresh ? 'Pausar auto refresh' : 'Activar auto refresh',
+              tooltip: _autoRefresh
+                  ? 'Pausar auto refresh'
+                  : 'Activar auto refresh',
               onPressed: _toggleAutoRefresh,
               icon: Icon(_autoRefresh ? Icons.pause_circle : Icons.play_circle),
             ),
@@ -112,98 +219,7 @@ class _DayDetailPageState extends State<DayDetailPage> {
           ),
         ],
       ),
-      body: AppScaffoldBackground(
-        child: RefreshIndicator(
-          onRefresh: _manualRefresh,
-          child: FutureBuilder<DayDetail>(
-            future: _future,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState != ConnectionState.done) {
-                return ListView(
-                  children: const [
-                    SizedBox(height: 240),
-                    Center(child: CircularProgressIndicator()),
-                  ],
-                );
-              }
-              if (snapshot.hasError) {
-                return ListView(
-                  children: [
-                    const SizedBox(height: 120),
-                    Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text(snapshot.error.toString(), textAlign: TextAlign.center),
-                    ),
-                  ],
-                );
-              }
-
-              final detail = snapshot.data;
-              if (detail == null) {
-                return ListView(
-                  children: const [
-                    SizedBox(height: 120),
-                    Center(child: Text('Sin datos de jornada.')),
-                  ],
-                );
-              }
-
-              return ListenableBuilder(
-                listenable: widget.favoritesController,
-                builder: (context, child) {
-                  final favoriteSlugs = widget.favoritesController.all;
-                  final orderedEvents = [...detail.processionEvents]
-                    ..sort((a, b) {
-                      final af = favoriteSlugs.contains(a.brotherhoodSlug);
-                      final bf = favoriteSlugs.contains(b.brotherhoodSlug);
-                      if (af == bf) {
-                        return a.brotherhoodName.compareTo(b.brotherhoodName);
-                      }
-                      return af ? -1 : 1;
-                    });
-
-                  return ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-                    children: [
-                      Text(
-                        '${detail.name} · ${detail.processionEvents.length} cofradías',
-                        style:
-                            const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _lastUpdatedAt == null
-                            ? 'Sin actualizar'
-                            : 'Última actualización ${DateFormat('HH:mm:ss').format(_lastUpdatedAt!)}',
-                      ),
-                      if (_supportsLive) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          _autoRefresh
-                              ? 'Seguimiento en vivo activo (cada 45s).'
-                              : 'Seguimiento en vivo en pausa para ahorrar datos.',
-                        ),
-                      ],
-                      const SizedBox(height: 12),
-                      for (final event in orderedEvents) ...[
-                        _ProcessionCard(
-                          event: event,
-                          isFavorite: widget.favoritesController
-                              .isFavorite(event.brotherhoodSlug),
-                          onToggleFavorite: () => widget.favoritesController
-                              .toggle(event.brotherhoodSlug),
-                        ),
-                        const SizedBox(height: 10),
-                      ],
-                    ],
-                  );
-                },
-              );
-            },
-          ),
-        ),
-      ),
+      body: content,
     );
   }
 }
@@ -244,7 +260,10 @@ class _ProcessionCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     event.brotherhoodName,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 IconButton(
@@ -255,7 +274,10 @@ class _ProcessionCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: style.background,
                     borderRadius: BorderRadius.circular(999),

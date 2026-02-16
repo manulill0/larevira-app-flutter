@@ -7,12 +7,15 @@ import 'src/data/api/api_client.dart';
 import 'src/data/local/app_database.dart';
 import 'src/data/repositories/larevira_repository.dart';
 import 'src/presentation/favorites/favorites_controller.dart';
+import 'src/presentation/maps/mapbox_map_helpers.dart';
 import 'src/presentation/offline/offline_sync_controller.dart';
+import 'src/presentation/planning/planning_controller.dart';
 import 'src/presentation/time/simulated_clock_controller.dart';
 import 'src/presentation/theme/theme_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  configureMapboxTokenIfPresent();
   await initializeDateFormatting('es_ES');
 
   final config = AppConfig.fromEnvironment();
@@ -22,6 +25,7 @@ Future<void> main() async {
     appDatabase: appDatabase,
   );
   final favoritesController = await FavoritesController.create();
+  final planningController = await PlanningController.create();
   final offlineSyncController = await OfflineSyncController.create(
     repository: repository,
     config: config,
@@ -34,6 +38,7 @@ Future<void> main() async {
   runApp(
     LaReviraApp(
       favoritesController: favoritesController,
+      planningController: planningController,
       offlineSyncController: offlineSyncController,
       themeController: themeController,
       simulatedClockController: simulatedClockController,

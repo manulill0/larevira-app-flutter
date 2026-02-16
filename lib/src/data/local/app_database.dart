@@ -398,4 +398,14 @@ class AppDatabase extends _$AppDatabase {
       return null;
     }
   }
+
+  Future<void> clearAllCaches() async {
+    await transaction(() async {
+      await delete(brotherhoodDetailsCache).go();
+      await delete(dayDetailsCache).go();
+      await delete(dayBrotherhoodsCache).go();
+      await delete(daysCache).go();
+      await delete(brotherhoodsCache).go();
+    });
+  }
 }

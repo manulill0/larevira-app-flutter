@@ -5,9 +5,12 @@ import '../../config/app_config.dart';
 import '../../data/models/day_models.dart';
 import '../../data/repositories/larevira_repository.dart';
 import '../favorites/favorites_controller.dart';
+import '../planning/planning_controller.dart';
 import '../time/simulated_clock_controller.dart';
 import '../widgets/app_scaffold_background.dart';
+import '../widgets/card_list_tile.dart';
 import 'day_brotherhoods_page.dart';
+import 'day_detail_page.dart';
 
 class DaysPage extends StatefulWidget {
   const DaysPage({
@@ -15,12 +18,14 @@ class DaysPage extends StatefulWidget {
     required this.repository,
     required this.config,
     required this.favoritesController,
+    required this.planningController,
     required this.simulatedClockController,
   });
 
   final LareviraRepository repository;
   final AppConfig config;
   final FavoritesController favoritesController;
+  final PlanningController planningController;
   final SimulatedClockController simulatedClockController;
 
   @override
@@ -30,6 +35,7 @@ class DaysPage extends StatefulWidget {
 class _DaysPageState extends State<DaysPage> {
   late String _mode = widget.config.mode;
   late Future<List<DayIndexItem>> _daysFuture;
+  String? _selectedDaySlug;
 
   @override
   void initState() {
@@ -48,8 +54,25 @@ class _DaysPageState extends State<DaysPage> {
   void _onModeChanged(String mode) {
     setState(() {
       _mode = mode;
+      _selectedDaySlug = null;
       _daysFuture = _loadDays();
     });
+  }
+
+  DayIndexItem? _selectedDayFor(List<DayIndexItem> days) {
+    if (days.isEmpty) {
+      return null;
+    }
+    final slug = _selectedDaySlug;
+    if (slug == null) {
+      return days.first;
+    }
+    for (final day in days) {
+      if (day.slug == slug) {
+        return day;
+      }
+    }
+    return days.first;
   }
 
   @override
@@ -113,41 +136,96 @@ class _DaysPageState extends State<DaysPage> {
 
                   final days = snapshot.data ?? const <DayIndexItem>[];
                   if (days.isEmpty) {
-                    return const Center(child: Text('Sin jornadas para este modo.'));
+                    return const Center(
+                      child: Text('Sin jornadas para este modo.'),
+                    );
+                  }
+
+                  final media = MediaQuery.of(context);
+                  final isTabletLandscape =
+                      media.orientation == Orientation.landscape &&
+                      media.size.width >= 1000 &&
+                      media.size.height >= 600;
+                  final selectedDay = _selectedDayFor(days);
+
+                  if (isTabletLandscape) {
+                    return Row(
+                      children: [
+                        SizedBox(
+                          width: 360,
+                          child: ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(20, 4, 12, 24),
+                            itemBuilder: (context, index) {
+                              final day = days[index];
+                              return _DayTile(
+                                day: day,
+                                isSelected: day.slug == selectedDay?.slug,
+                                onTap: () {
+                                  setState(() => _selectedDaySlug = day.slug);
+                                },
+                              );
+                            },
+                            separatorBuilder: (context, index) =>
+                                const SizedBox(height: 8),
+                            itemCount: days.length,
+                          ),
+                        ),
+                        const VerticalDivider(width: 1),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 4, 20, 24),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(20),
+                              child: selectedDay == null
+                                  ? const Center(
+                                      child: Text('Selecciona una jornada.'),
+                                    )
+                                  : DayDetailPage(
+                                      daySlug: selectedDay.slug,
+                                      title: selectedDay.name,
+                                      repository: widget.repository,
+                                      config: widget.config,
+                                      mode: _mode,
+                                      favoritesController:
+                                          widget.favoritesController,
+                                      embedded: true,
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
                   }
 
                   return ListView.separated(
                     padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
                     itemBuilder: (context, index) {
                       final day = days[index];
-                      final startsAt = day.startsAt == null
-                          ? 'Sin hora'
-                          : DateFormat('EEEE d, HH:mm').format(day.startsAt!);
 
-                      return Card(
-                        child: ListTile(
-                          title: Text(day.name),
-                          subtitle: Text(startsAt),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => DayBrotherhoodsPage(
-                                  daySlug: day.slug,
-                                  dayName: day.name,
-                                  mode: _mode,
-                                  repository: widget.repository,
-                                  config: widget.config,
-                                  favoritesController: widget.favoritesController,
-                                  simulatedClockController: widget.simulatedClockController,
-                                ),
+                      return _DayTile(
+                        day: day,
+                        isSelected: false,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => DayBrotherhoodsPage(
+                                daySlug: day.slug,
+                                dayName: day.name,
+                                mode: _mode,
+                                repository: widget.repository,
+                                config: widget.config,
+                                favoritesController: widget.favoritesController,
+                                planningController: widget.planningController,
+                                simulatedClockController:
+                                    widget.simulatedClockController,
                               ),
-                            );
-                          },
-                        ),
+                            ),
+                          );
+                        },
                       );
                     },
-                    separatorBuilder: (context, index) => const SizedBox(height: 8),
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 8),
                     itemCount: days.length,
                   );
                 },
@@ -156,6 +234,34 @@ class _DaysPageState extends State<DaysPage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _DayTile extends StatelessWidget {
+  const _DayTile({
+    required this.day,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final DayIndexItem day;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final startsAt = day.startsAt == null
+        ? 'Sin hora'
+        : DateFormat('EEEE d, HH:mm').format(day.startsAt!);
+
+    return CardListTile(
+      color: isSelected ? const Color(0xFFFFF4DB) : null,
+      selected: isSelected,
+      title: Text(day.name),
+      subtitle: Text(startsAt),
+      trailing: Icon(isSelected ? Icons.chevron_left : Icons.chevron_right),
+      onTap: onTap,
     );
   }
 }

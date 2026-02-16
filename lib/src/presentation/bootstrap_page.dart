@@ -6,6 +6,7 @@ import '../data/repositories/larevira_repository.dart';
 import 'favorites/favorites_controller.dart';
 import 'home_shell.dart';
 import 'offline/offline_sync_controller.dart';
+import 'planning/planning_controller.dart';
 import 'time/simulated_clock_controller.dart';
 import 'theme/app_colors.dart';
 import 'theme/theme_controller.dart';
@@ -16,6 +17,7 @@ class BootstrapPage extends StatefulWidget {
     required this.repository,
     required this.config,
     required this.favoritesController,
+    required this.planningController,
     required this.offlineSyncController,
     required this.themeController,
     required this.simulatedClockController,
@@ -24,6 +26,7 @@ class BootstrapPage extends StatefulWidget {
   final LareviraRepository repository;
   final AppConfig config;
   final FavoritesController favoritesController;
+  final PlanningController planningController;
   final OfflineSyncController offlineSyncController;
   final ThemeController themeController;
   final SimulatedClockController simulatedClockController;
@@ -76,6 +79,7 @@ class _BootstrapPageState extends State<BootstrapPage>
         repository: widget.repository,
         config: widget.config,
         favoritesController: widget.favoritesController,
+        planningController: widget.planningController,
         offlineSyncController: widget.offlineSyncController,
         themeController: widget.themeController,
         simulatedClockController: widget.simulatedClockController,
@@ -109,8 +113,9 @@ class _BootstrapPageState extends State<BootstrapPage>
                           width: 84,
                           height: 84,
                           decoration: BoxDecoration(
-                            color: AppColors.splashIcon(isDark: isDark)
-                                .withValues(alpha: 0.14),
+                            color: AppColors.splashIcon(
+                              isDark: isDark,
+                            ).withValues(alpha: 0.14),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(

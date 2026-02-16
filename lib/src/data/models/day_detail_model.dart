@@ -86,7 +86,7 @@ class SchedulePoint {
   factory SchedulePoint.fromJson(Map<String, dynamic> json) {
     return SchedulePoint(
       name: (json['name'] ?? 'Punto') as String,
-      plannedAt: DateTime.tryParse((json['planned_at'] ?? '') as String),
+      plannedAt: _parseDateTimeWallClock((json['planned_at'] ?? '') as String),
       latitude: _toDouble(json['latitude']),
       longitude: _toDouble(json['longitude']),
     );
@@ -119,4 +119,41 @@ double? _toDouble(dynamic value) {
     return value.toDouble();
   }
   return double.tryParse(value.toString());
+}
+
+DateTime? _parseDateTimeWallClock(String raw) {
+  final value = raw.trim();
+  if (value.isEmpty) {
+    return null;
+  }
+
+  final match = RegExp(
+    r'^(\\d{4})-(\\d{2})-(\\d{2})[T ](\\d{2}):(\\d{2})(?::(\\d{2}))?',
+  ).firstMatch(value);
+  if (match != null) {
+    return DateTime(
+      int.parse(match.group(1)!),
+      int.parse(match.group(2)!),
+      int.parse(match.group(3)!),
+      int.parse(match.group(4)!),
+      int.parse(match.group(5)!),
+      int.parse(match.group(6) ?? '0'),
+    );
+  }
+
+  final parsed = DateTime.tryParse(value);
+  if (parsed == null) {
+    return null;
+  }
+
+  return DateTime(
+    parsed.year,
+    parsed.month,
+    parsed.day,
+    parsed.hour,
+    parsed.minute,
+    parsed.second,
+    parsed.millisecond,
+    parsed.microsecond,
+  );
 }

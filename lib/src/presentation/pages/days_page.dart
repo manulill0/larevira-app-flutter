@@ -10,7 +10,6 @@ import '../time/simulated_clock_controller.dart';
 import '../widgets/app_scaffold_background.dart';
 import '../widgets/card_list_tile.dart';
 import 'day_brotherhoods_page.dart';
-import 'day_detail_page.dart';
 
 class DaysPage extends StatefulWidget {
   const DaysPage({
@@ -180,14 +179,18 @@ class _DaysPageState extends State<DaysPage> {
                                   ? const Center(
                                       child: Text('Selecciona una jornada.'),
                                     )
-                                  : DayDetailPage(
+                                  : DayBrotherhoodsPage(
                                       daySlug: selectedDay.slug,
-                                      title: selectedDay.name,
+                                      dayName: selectedDay.name,
+                                      mode: _mode,
                                       repository: widget.repository,
                                       config: widget.config,
-                                      mode: _mode,
                                       favoritesController:
                                           widget.favoritesController,
+                                      planningController:
+                                          widget.planningController,
+                                      simulatedClockController:
+                                          widget.simulatedClockController,
                                       embedded: true,
                                     ),
                             ),

@@ -27,6 +27,7 @@ class DayBrotherhoodsPage extends StatefulWidget {
     required this.planningController,
     required this.simulatedClockController,
     this.initialTabIndex = 0,
+    this.embedded = false,
   });
 
   final String daySlug;
@@ -38,6 +39,7 @@ class DayBrotherhoodsPage extends StatefulWidget {
   final PlanningController planningController;
   final SimulatedClockController simulatedClockController;
   final int initialTabIndex;
+  final bool embedded;
 
   @override
   State<DayBrotherhoodsPage> createState() => _DayBrotherhoodsPageState();
@@ -65,21 +67,10 @@ class _DayBrotherhoodsPageState extends State<DayBrotherhoodsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.dayName),
-        actions: [
-          IconButton(
-            tooltip: 'Actualizar',
-            onPressed: () => setState(() => _future = _load()),
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
-      body: AppScaffoldBackground(
-        child: FutureBuilder<DayDetail>(
-          future: _future,
-          builder: (context, snapshot) {
+    final content = AppScaffoldBackground(
+      child: FutureBuilder<DayDetail>(
+        future: _future,
+        builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) {
               return const Center(child: CircularProgressIndicator());
             }
@@ -139,8 +130,76 @@ class _DayBrotherhoodsPageState extends State<DayBrotherhoodsPage> {
               ],
             );
           },
-        ),
       ),
+    );
+
+    final navBar = NavigationBar(
+      selectedIndex: _selectedIndex,
+      onDestinationSelected: (value) => setState(() => _selectedIndex = value),
+      destinations: const [
+        NavigationDestination(
+          icon: Icon(Icons.schedule_outlined),
+          selectedIcon: Icon(Icons.schedule),
+          label: 'Horario',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.map_outlined),
+          selectedIcon: Icon(Icons.map),
+          label: 'Mapa',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.church_outlined),
+          selectedIcon: Icon(Icons.church),
+          label: 'Hermandades',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.star_outline),
+          selectedIcon: Icon(Icons.star),
+          label: 'Planning',
+        ),
+      ],
+    );
+
+    if (widget.embedded) {
+      return Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Row(
+              children: [
+                Text(
+                  widget.dayName,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  tooltip: 'Actualizar',
+                  onPressed: () => setState(() => _future = _load()),
+                  icon: const Icon(Icons.refresh),
+                ),
+              ],
+            ),
+          ),
+          Expanded(child: content),
+          navBar,
+        ],
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.dayName),
+        actions: [
+          IconButton(
+            tooltip: 'Actualizar',
+            onPressed: () => setState(() => _future = _load()),
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
+      body: content,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: (value) =>

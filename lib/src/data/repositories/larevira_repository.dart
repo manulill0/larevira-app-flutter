@@ -10,8 +10,8 @@ class LareviraRepository {
   LareviraRepository({
     required ApiClient apiClient,
     required AppDatabase appDatabase,
-  })  : _apiClient = apiClient,
-        _appDatabase = appDatabase;
+  }) : _apiClient = apiClient,
+       _appDatabase = appDatabase;
 
   final ApiClient _apiClient;
   final AppDatabase _appDatabase;
@@ -113,10 +113,7 @@ class LareviraRepository {
       // Sin red: devolvemos local vacío.
     }
 
-    local = await _appDatabase.getBrotherhoods(
-      city: citySlug,
-      yearValue: year,
-    );
+    local = await _appDatabase.getBrotherhoods(city: citySlug, yearValue: year);
     return local;
   }
 
@@ -292,7 +289,9 @@ class LareviraRepository {
     required int year,
     required String brotherhoodSlug,
   }) async {
-    final response = await _apiClient.get('/$citySlug/$year/brotherhoods/$brotherhoodSlug');
+    final response = await _apiClient.get(
+      '/$citySlug/$year/brotherhoods/$brotherhoodSlug',
+    );
 
     final payload = response.data as Map<String, dynamic>;
     final data = (payload['data'] as Map<String, dynamic>? ?? const {});
@@ -309,5 +308,42 @@ class LareviraRepository {
   Future<void> clearAllLocalCache() async {
     await _apiClient.clearHttpCache();
     await _appDatabase.clearAllCaches();
+  }
+
+  Future<String> createPlanningShare({
+    required String citySlug,
+    required int year,
+    required String mode,
+    required List<Map<String, dynamic>> entries,
+  }) async {
+    final response = await _apiClient.post(
+      '/planning/shares',
+      data: {
+        'city_slug': citySlug,
+        'year': year,
+        'mode': mode,
+        'entries': entries,
+      },
+    );
+
+    final payload = response.data as Map<String, dynamic>;
+    final data = (payload['data'] as Map<String, dynamic>? ?? const {});
+    final shareUrl = (data['share_url'] ?? '') as String;
+    if (shareUrl.isEmpty) {
+      throw StateError('No se pudo obtener la URL del planning compartido.');
+    }
+
+    return shareUrl;
+  }
+
+  Future<List<Map<String, dynamic>>> getPlanningShareEntries({
+    required String slug,
+  }) async {
+    final response = await _apiClient.get('/planning/shares/$slug');
+    final payload = response.data as Map<String, dynamic>;
+    final data = (payload['data'] as Map<String, dynamic>? ?? const {});
+    final entries = (data['entries'] as List<dynamic>? ?? const []);
+
+    return entries.whereType<Map<String, dynamic>>().toList(growable: false);
   }
 }

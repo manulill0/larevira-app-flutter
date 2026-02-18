@@ -5,6 +5,7 @@ import 'config/app_config.dart';
 import 'data/repositories/larevira_repository.dart';
 import 'presentation/bootstrap_page.dart';
 import 'presentation/favorites/favorites_controller.dart';
+import 'presentation/mode/mode_controller.dart';
 import 'presentation/offline/offline_sync_controller.dart';
 import 'presentation/planning/planning_controller.dart';
 import 'presentation/time/simulated_clock_controller.dart';
@@ -17,6 +18,7 @@ class LaReviraApp extends StatelessWidget {
     required this.favoritesController,
     required this.planningController,
     required this.offlineSyncController,
+    required this.modeController,
     required this.themeController,
     required this.simulatedClockController,
     required this.repository,
@@ -26,6 +28,7 @@ class LaReviraApp extends StatelessWidget {
   final FavoritesController favoritesController;
   final PlanningController planningController;
   final OfflineSyncController offlineSyncController;
+  final ModeController modeController;
   final ThemeController themeController;
   final SimulatedClockController simulatedClockController;
   final LareviraRepository repository;
@@ -55,6 +58,7 @@ class LaReviraApp extends StatelessWidget {
             favoritesController: favoritesController,
             planningController: planningController,
             offlineSyncController: offlineSyncController,
+            modeController: modeController,
             themeController: themeController,
             simulatedClockController: simulatedClockController,
           ),

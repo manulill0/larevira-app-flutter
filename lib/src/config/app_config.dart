@@ -5,6 +5,9 @@ class AppConfig {
     required this.editionYear,
     required this.mode,
     required this.simulatedNowFromEnv,
+    required this.planningShareBaseUrl,
+    required this.androidStoreUrl,
+    required this.iosStoreUrl,
   });
 
   final String baseUrl;
@@ -12,6 +15,9 @@ class AppConfig {
   final int editionYear;
   final String mode;
   final DateTime? simulatedNowFromEnv;
+  final String planningShareBaseUrl;
+  final String androidStoreUrl;
+  final String iosStoreUrl;
 
   static const _validModes = {'all', 'live', 'official'};
 
@@ -33,6 +39,19 @@ class AppConfig {
       'SIMULATED_NOW',
       defaultValue: '',
     );
+    const rawPlanningShareBaseUrl = String.fromEnvironment(
+      'PLANNING_SHARE_BASE_URL',
+      defaultValue: 'https://larevira.app/planning/share',
+    );
+    const rawAndroidStoreUrl = String.fromEnvironment(
+      'ANDROID_STORE_URL',
+      defaultValue:
+          'https://play.google.com/store/apps/details?id=com.larevira.larevira_app_flutter',
+    );
+    const rawIosStoreUrl = String.fromEnvironment(
+      'IOS_STORE_URL',
+      defaultValue: 'https://apps.apple.com/app/id0000000000',
+    );
 
     return AppConfig(
       baseUrl: rawBaseUrl,
@@ -42,6 +61,9 @@ class AppConfig {
       simulatedNowFromEnv: rawSimulatedNow.isEmpty
           ? null
           : DateTime.tryParse(rawSimulatedNow),
+      planningShareBaseUrl: rawPlanningShareBaseUrl,
+      androidStoreUrl: rawAndroidStoreUrl,
+      iosStoreUrl: rawIosStoreUrl,
     );
   }
 }

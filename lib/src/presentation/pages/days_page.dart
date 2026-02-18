@@ -5,6 +5,7 @@ import '../../config/app_config.dart';
 import '../../data/models/day_models.dart';
 import '../../data/repositories/larevira_repository.dart';
 import '../favorites/favorites_controller.dart';
+import '../mode/mode_controller.dart';
 import '../planning/planning_controller.dart';
 import '../time/simulated_clock_controller.dart';
 import '../widgets/app_scaffold_background.dart';
@@ -19,6 +20,7 @@ class DaysPage extends StatefulWidget {
     required this.favoritesController,
     required this.planningController,
     required this.simulatedClockController,
+    required this.modeController,
   });
 
   final LareviraRepository repository;
@@ -26,20 +28,29 @@ class DaysPage extends StatefulWidget {
   final FavoritesController favoritesController;
   final PlanningController planningController;
   final SimulatedClockController simulatedClockController;
+  final ModeController modeController;
 
   @override
   State<DaysPage> createState() => _DaysPageState();
 }
 
 class _DaysPageState extends State<DaysPage> {
-  late String _mode = widget.config.mode;
+  late String _mode;
   late Future<List<DayIndexItem>> _daysFuture;
   String? _selectedDaySlug;
 
   @override
   void initState() {
     super.initState();
+    _mode = widget.modeController.mode;
+    widget.modeController.addListener(_onModeChanged);
     _daysFuture = _loadDays();
+  }
+
+  @override
+  void dispose() {
+    widget.modeController.removeListener(_onModeChanged);
+    super.dispose();
   }
 
   Future<List<DayIndexItem>> _loadDays() {
@@ -50,7 +61,11 @@ class _DaysPageState extends State<DaysPage> {
     );
   }
 
-  void _onModeChanged(String mode) {
+  void _onModeChanged() {
+    final mode = widget.modeController.mode;
+    if (mode == _mode) {
+      return;
+    }
     setState(() {
       _mode = mode;
       _selectedDaySlug = null;
@@ -82,42 +97,27 @@ class _DaysPageState extends State<DaysPage> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Jornadas',
-                        style: Theme.of(context).appBarTheme.titleTextStyle,
-                      ),
-                      const Spacer(),
-                      ListenableBuilder(
-                        listenable: widget.favoritesController,
-                        builder: (context, child) {
-                          return Chip(
-                            avatar: const Icon(
-                              Icons.star,
-                              size: 16,
-                              color: Color(0xFF8B1E3F),
-                            ),
-                            label: Text(
-                              '${widget.favoritesController.all.length} favoritas',
-                            ),
-                          );
-                        },
-                      ),
-                    ],
+                  Text(
+                    'Jornadas',
+                    style: Theme.of(context).appBarTheme.titleTextStyle,
                   ),
-                  const SizedBox(height: 8),
-                  SegmentedButton<String>(
-                    segments: const [
-                      ButtonSegment(value: 'all', label: Text('All')),
-                      ButtonSegment(value: 'live', label: Text('Live')),
-                      ButtonSegment(value: 'official', label: Text('Oficial')),
-                    ],
-                    selected: {_mode},
-                    onSelectionChanged: (value) => _onModeChanged(value.first),
+                  const Spacer(),
+                  ListenableBuilder(
+                    listenable: widget.favoritesController,
+                    builder: (context, child) {
+                      return Chip(
+                        avatar: const Icon(
+                          Icons.star,
+                          size: 16,
+                          color: Color(0xFF8B1E3F),
+                        ),
+                        label: Text(
+                          '${widget.favoritesController.all.length} favoritas',
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

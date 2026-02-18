@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../config/app_config.dart';
+import '../mode/mode_controller.dart';
 import '../offline/offline_sync_controller.dart';
 import '../time/simulated_clock_controller.dart';
 import '../theme/theme_controller.dart';
@@ -13,12 +14,14 @@ class MorePage extends StatelessWidget {
     super.key,
     required this.config,
     required this.offlineSyncController,
+    required this.modeController,
     required this.themeController,
     required this.simulatedClockController,
   });
 
   final AppConfig config;
   final OfflineSyncController offlineSyncController;
+  final ModeController modeController;
   final ThemeController themeController;
   final SimulatedClockController simulatedClockController;
 
@@ -90,6 +93,7 @@ class MorePage extends StatelessWidget {
         child: ListenableBuilder(
           listenable: Listenable.merge([
             offlineSyncController,
+            modeController,
             themeController,
             simulatedClockController,
           ]),
@@ -123,6 +127,22 @@ class MorePage extends StatelessWidget {
                     subtitle: Text(
                       '${config.citySlug} · ${config.editionYear}',
                     ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SettingsSectionCard(
+                  icon: Icons.tune_outlined,
+                  title: 'Modo de datos',
+                  child: SegmentedButton<String>(
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment(value: 'all', label: Text('All')),
+                      ButtonSegment(value: 'live', label: Text('Live')),
+                      ButtonSegment(value: 'official', label: Text('Oficial')),
+                    ],
+                    selected: {modeController.mode},
+                    onSelectionChanged: (value) =>
+                        modeController.setMode(value.first),
                   ),
                 ),
                 const SizedBox(height: 8),

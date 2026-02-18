@@ -5,6 +5,7 @@ import '../config/app_config.dart';
 import '../data/repositories/larevira_repository.dart';
 import 'favorites/favorites_controller.dart';
 import 'home_shell.dart';
+import 'mode/mode_controller.dart';
 import 'offline/offline_sync_controller.dart';
 import 'planning/planning_controller.dart';
 import 'time/simulated_clock_controller.dart';
@@ -19,6 +20,7 @@ class BootstrapPage extends StatefulWidget {
     required this.favoritesController,
     required this.planningController,
     required this.offlineSyncController,
+    required this.modeController,
     required this.themeController,
     required this.simulatedClockController,
   });
@@ -28,6 +30,7 @@ class BootstrapPage extends StatefulWidget {
   final FavoritesController favoritesController;
   final PlanningController planningController;
   final OfflineSyncController offlineSyncController;
+  final ModeController modeController;
   final ThemeController themeController;
   final SimulatedClockController simulatedClockController;
 
@@ -81,6 +84,7 @@ class _BootstrapPageState extends State<BootstrapPage>
         favoritesController: widget.favoritesController,
         planningController: widget.planningController,
         offlineSyncController: widget.offlineSyncController,
+        modeController: widget.modeController,
         themeController: widget.themeController,
         simulatedClockController: widget.simulatedClockController,
       );

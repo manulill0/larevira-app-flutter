@@ -56,6 +56,17 @@ class _DayBrotherhoodsPageState extends State<DayBrotherhoodsPage> {
     _future = _load();
   }
 
+  @override
+  void didUpdateWidget(covariant DayBrotherhoodsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.daySlug != widget.daySlug || oldWidget.mode != widget.mode) {
+      setState(() {
+        _selectedIndex = 0;
+        _future = _load();
+      });
+    }
+  }
+
   Future<DayDetail> _load() {
     return widget.repository.getDayDetail(
       citySlug: widget.config.citySlug,
@@ -71,93 +82,66 @@ class _DayBrotherhoodsPageState extends State<DayBrotherhoodsPage> {
       child: FutureBuilder<DayDetail>(
         future: _future,
         builder: (context, snapshot) {
-            if (snapshot.connectionState != ConnectionState.done) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (snapshot.hasError) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text(
-                    'No se pudo cargar la jornada.\n${snapshot.error}',
-                    textAlign: TextAlign.center,
-                  ),
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'No se pudo cargar la jornada.\n${snapshot.error}',
+                  textAlign: TextAlign.center,
                 ),
-              );
-            }
-
-            final detail = snapshot.data;
-            if (detail == null || detail.processionEvents.isEmpty) {
-              return const Center(
-                child: Text('No hay datos cargados para esta jornada.'),
-              );
-            }
-
-            return IndexedStack(
-              index: _selectedIndex,
-              children: [
-                _DayScheduleTab(
-                  citySlug: widget.config.citySlug,
-                  year: widget.config.editionYear,
-                  mode: widget.mode,
-                  daySlug: widget.daySlug,
-                  dayName: widget.dayName,
-                  events: detail.processionEvents,
-                  simulatedClockController: widget.simulatedClockController,
-                  planningController: widget.planningController,
-                ),
-                _DayMapTab(events: detail.processionEvents),
-                _DayBrotherhoodsTab(
-                  citySlug: widget.config.citySlug,
-                  year: widget.config.editionYear,
-                  mode: widget.mode,
-                  daySlug: widget.daySlug,
-                  dayName: widget.dayName,
-                  events: detail.processionEvents,
-                  repository: widget.repository,
-                  config: widget.config,
-                  favoritesController: widget.favoritesController,
-                  planningController: widget.planningController,
-                  simulatedClockController: widget.simulatedClockController,
-                ),
-                _DayPlanningTab(
-                  citySlug: widget.config.citySlug,
-                  year: widget.config.editionYear,
-                  mode: widget.mode,
-                  daySlug: widget.daySlug,
-                  planningController: widget.planningController,
-                ),
-              ],
+              ),
             );
-          },
-      ),
-    );
+          }
 
-    final navBar = NavigationBar(
-      selectedIndex: _selectedIndex,
-      onDestinationSelected: (value) => setState(() => _selectedIndex = value),
-      destinations: const [
-        NavigationDestination(
-          icon: Icon(Icons.schedule_outlined),
-          selectedIcon: Icon(Icons.schedule),
-          label: 'Horario',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.map_outlined),
-          selectedIcon: Icon(Icons.map),
-          label: 'Mapa',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.church_outlined),
-          selectedIcon: Icon(Icons.church),
-          label: 'Hermandades',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.star_outline),
-          selectedIcon: Icon(Icons.star),
-          label: 'Planning',
-        ),
-      ],
+          final detail = snapshot.data;
+          if (detail == null || detail.processionEvents.isEmpty) {
+            return const Center(
+              child: Text('No hay datos cargados para esta jornada.'),
+            );
+          }
+
+          return IndexedStack(
+            index: _selectedIndex,
+            children: [
+              _DayScheduleTab(
+                citySlug: widget.config.citySlug,
+                year: widget.config.editionYear,
+                mode: widget.mode,
+                daySlug: widget.daySlug,
+                dayName: widget.dayName,
+                events: detail.processionEvents,
+                simulatedClockController: widget.simulatedClockController,
+                planningController: widget.planningController,
+              ),
+              _DayMapTab(events: detail.processionEvents),
+              _DayBrotherhoodsTab(
+                citySlug: widget.config.citySlug,
+                year: widget.config.editionYear,
+                mode: widget.mode,
+                daySlug: widget.daySlug,
+                dayName: widget.dayName,
+                events: detail.processionEvents,
+                repository: widget.repository,
+                config: widget.config,
+                favoritesController: widget.favoritesController,
+                planningController: widget.planningController,
+                simulatedClockController: widget.simulatedClockController,
+              ),
+              _DayPlanningTab(
+                citySlug: widget.config.citySlug,
+                year: widget.config.editionYear,
+                mode: widget.mode,
+                daySlug: widget.daySlug,
+                planningController: widget.planningController,
+              ),
+            ],
+          );
+        },
+      ),
     );
 
     if (widget.embedded) {
@@ -165,25 +149,61 @@ class _DayBrotherhoodsPageState extends State<DayBrotherhoodsPage> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Row(
+            child: Column(
               children: [
-                Text(
-                  widget.dayName,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      widget.dayName,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      tooltip: 'Actualizar',
+                      onPressed: () => setState(() => _future = _load()),
+                      icon: const Icon(Icons.refresh),
+                    ),
+                  ],
                 ),
-                const Spacer(),
-                IconButton(
-                  tooltip: 'Actualizar',
-                  onPressed: () => setState(() => _future = _load()),
-                  icon: const Icon(Icons.refresh),
+                const SizedBox(height: 4),
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<int>(
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment(
+                        value: 0,
+                        icon: Icon(Icons.schedule_outlined),
+                        label: Text('Horario'),
+                      ),
+                      ButtonSegment(
+                        value: 1,
+                        icon: Icon(Icons.map_outlined),
+                        label: Text('Mapa'),
+                      ),
+                      ButtonSegment(
+                        value: 2,
+                        icon: Icon(Icons.church_outlined),
+                        label: Text('Hermandades'),
+                      ),
+                      ButtonSegment(
+                        value: 3,
+                        icon: Icon(Icons.star_outline),
+                        label: Text('Planning'),
+                      ),
+                    ],
+                    selected: {_selectedIndex},
+                    onSelectionChanged: (value) {
+                      setState(() => _selectedIndex = value.first);
+                    },
+                  ),
                 ),
               ],
             ),
           ),
           Expanded(child: content),
-          navBar,
         ],
       );
     }
@@ -953,9 +973,11 @@ class _DayMapTabState extends State<_DayMapTab> {
   CircleAnnotationManager? _circleManager;
 
   List<_RouteLine> get _routeLines => widget.events
+      .asMap()
+      .entries
       .map(
-        (event) => _RouteLine(
-          points: event.routePoints
+        (entry) => _RouteLine(
+          points: entry.value.routePoints
               .where((point) => point.isValid)
               .map(
                 (point) => MapPoint(
@@ -964,7 +986,7 @@ class _DayMapTabState extends State<_DayMapTab> {
                 ),
               )
               .toList(growable: false),
-          color: parseHexColor(event.brotherhoodColorHex),
+          color: parseHexColor(entry.value.brotherhoodColorHex),
         ),
       )
       .where((line) => line.points.length >= 2)
@@ -1618,7 +1640,6 @@ class _DayPlanningTabState extends State<_DayPlanningTab> {
 
 class _RouteLine {
   const _RouteLine({required this.points, required this.color});
-
   final List<MapPoint> points;
   final Color color;
 }

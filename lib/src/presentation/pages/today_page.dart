@@ -6,6 +6,7 @@ import '../../data/models/brotherhood_model.dart';
 import '../../data/models/day_models.dart';
 import '../../data/repositories/larevira_repository.dart';
 import '../favorites/favorites_controller.dart';
+import '../mode/mode_controller.dart';
 import '../time/simulated_clock_controller.dart';
 import '../utils/color_utils.dart';
 import '../widgets/app_scaffold_background.dart';
@@ -19,12 +20,14 @@ class TodayPage extends StatefulWidget {
     required this.config,
     required this.favoritesController,
     required this.simulatedClockController,
+    required this.modeController,
   });
 
   final LareviraRepository repository;
   final AppConfig config;
   final FavoritesController favoritesController;
   final SimulatedClockController simulatedClockController;
+  final ModeController modeController;
 
   @override
   State<TodayPage> createState() => _TodayPageState();
@@ -33,20 +36,41 @@ class TodayPage extends StatefulWidget {
 class _TodayPageState extends State<TodayPage> {
   late Future<List<DayIndexItem>> _daysFuture;
   late Future<List<BrotherhoodItem>> _brotherhoodsFuture;
+  late String _mode;
   bool _syncing = false;
 
   @override
   void initState() {
     super.initState();
+    _mode = widget.modeController.mode;
+    widget.modeController.addListener(_onModeChanged);
     _daysFuture = _loadDays();
     _brotherhoodsFuture = _loadBrotherhoods();
+  }
+
+  @override
+  void dispose() {
+    widget.modeController.removeListener(_onModeChanged);
+    super.dispose();
+  }
+
+  void _onModeChanged() {
+    final nextMode = widget.modeController.mode;
+    if (nextMode == _mode) {
+      return;
+    }
+    setState(() {
+      _mode = nextMode;
+      _daysFuture = _loadDays();
+      _brotherhoodsFuture = _loadBrotherhoods();
+    });
   }
 
   Future<List<DayIndexItem>> _loadDays() {
     return widget.repository.getDays(
       citySlug: widget.config.citySlug,
       year: widget.config.editionYear,
-      mode: widget.config.mode,
+      mode: _mode,
     );
   }
 
@@ -67,7 +91,7 @@ class _TodayPageState extends State<TodayPage> {
         widget.repository.syncDays(
           citySlug: widget.config.citySlug,
           year: widget.config.editionYear,
-          mode: widget.config.mode,
+          mode: _mode,
         ),
         widget.repository.syncBrotherhoods(
           citySlug: widget.config.citySlug,
@@ -152,7 +176,7 @@ class _TodayPageState extends State<TodayPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '${widget.config.citySlug.toUpperCase()} ${widget.config.editionYear} · Modo ${widget.config.mode}',
+                                '${widget.config.citySlug.toUpperCase()} ${widget.config.editionYear} · Modo $_mode',
                               ),
                               if (widget
                                   .simulatedClockController
@@ -297,7 +321,7 @@ class _TodayPageState extends State<TodayPage> {
                                         title: day.name,
                                         repository: widget.repository,
                                         config: widget.config,
-                                        mode: widget.config.mode,
+                                        mode: _mode,
                                         favoritesController:
                                             widget.favoritesController,
                                       ),

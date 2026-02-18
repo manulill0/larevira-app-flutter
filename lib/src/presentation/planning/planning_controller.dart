@@ -110,6 +110,25 @@ class PlanningController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<int> upsertAll(Iterable<PlanningEntry> entries) async {
+    var inserted = 0;
+    for (final entry in entries) {
+      if (_entries.containsKey(entry.id)) {
+        continue;
+      }
+      _entries[entry.id] = entry;
+      inserted++;
+    }
+
+    if (inserted == 0) {
+      return 0;
+    }
+
+    await _persist();
+    notifyListeners();
+    return inserted;
+  }
+
   Future<void> _persist() async {
     final payload =
         _entries.values.map((entry) => jsonEncode(entry.toJson())).toList()

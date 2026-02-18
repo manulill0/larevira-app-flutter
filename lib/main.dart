@@ -8,6 +8,7 @@ import 'src/data/local/app_database.dart';
 import 'src/data/repositories/larevira_repository.dart';
 import 'src/presentation/favorites/favorites_controller.dart';
 import 'src/presentation/maps/mapbox_map_helpers.dart';
+import 'src/presentation/mode/mode_controller.dart';
 import 'src/presentation/offline/offline_sync_controller.dart';
 import 'src/presentation/planning/planning_controller.dart';
 import 'src/presentation/time/simulated_clock_controller.dart';
@@ -30,6 +31,7 @@ Future<void> main() async {
     repository: repository,
     config: config,
   );
+  final modeController = await ModeController.create(initialMode: config.mode);
   final themeController = await ThemeController.create();
   final simulatedClockController = await SimulatedClockController.create(
     initialSimulatedNow: config.simulatedNowFromEnv,
@@ -40,6 +42,7 @@ Future<void> main() async {
       favoritesController: favoritesController,
       planningController: planningController,
       offlineSyncController: offlineSyncController,
+      modeController: modeController,
       themeController: themeController,
       simulatedClockController: simulatedClockController,
       repository: repository,

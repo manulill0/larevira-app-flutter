@@ -16,6 +16,7 @@ class BrotherhoodDetail {
     required this.dayLabel,
     required this.departureAt,
     required this.routeDescription,
+    required this.routePoints,
     required this.itineraryPoints,
   });
 
@@ -35,10 +36,12 @@ class BrotherhoodDetail {
   final String dayLabel;
   final DateTime? departureAt;
   final String routeDescription;
+  final List<BrotherhoodRoutePoint> routePoints;
   final List<BrotherhoodItineraryPoint> itineraryPoints;
 
   factory BrotherhoodDetail.fromJson(Map<String, dynamic> json) {
-    final headquarters = (json['headquarters'] as Map<String, dynamic>? ?? const {});
+    final headquarters =
+        (json['headquarters'] as Map<String, dynamic>? ?? const {});
     final news = (json['news'] as List<dynamic>? ?? const []);
     final pasos = (json['pasos'] as List<dynamic>? ?? const []);
     final events = (json['procession_events'] as List<dynamic>? ?? const []);
@@ -47,12 +50,20 @@ class BrotherhoodDetail {
         : const <String, dynamic>{};
     final editionDay =
         (firstEvent['edition_day'] as Map<String, dynamic>? ?? const {});
-    final route = (firstEvent['route'] as Map<String, dynamic>? ?? const {});
+    final itinerary =
+        (firstEvent['itinerary'] as Map<String, dynamic>? ?? const {});
+    final rawRoutePathPoints =
+        (itinerary['path_points'] as List<dynamic>? ?? const []);
+    final rawRoutePolyline =
+        (itinerary['polyline'] as List<dynamic>? ?? const []);
+    final rawRouteWaypoints =
+        (itinerary['waypoints'] as List<dynamic>? ?? const []);
     final schedulePoints =
-        (firstEvent['schedule_points'] as List<dynamic>? ?? const []);
+        (itinerary['schedule_points'] as List<dynamic>? ?? const []);
 
     DateTime? departureAt;
-    if (schedulePoints.isNotEmpty && schedulePoints.first is Map<String, dynamic>) {
+    if (schedulePoints.isNotEmpty &&
+        schedulePoints.first is Map<String, dynamic>) {
       final raw = (schedulePoints.first as Map<String, dynamic>)['planned_at'];
       if (raw is String) {
         departureAt = _parseDateTimeWallClock(raw);
@@ -83,12 +94,40 @@ class BrotherhoodDetail {
           .toList(growable: false),
       dayLabel: (editionDay['name'] ?? '') as String,
       departureAt: departureAt,
-      routeDescription: (route['description'] ?? '') as String,
+      routeDescription: (itinerary['description'] ?? '') as String,
+      routePoints:
+          (rawRoutePathPoints.isNotEmpty
+                  ? rawRoutePathPoints
+                  : (rawRoutePolyline.isNotEmpty
+                        ? rawRoutePolyline
+                        : rawRouteWaypoints))
+              .whereType<Map<String, dynamic>>()
+              .map(BrotherhoodRoutePoint.fromJson)
+              .where((point) => point.hasLocation)
+              .toList(growable: false),
       itineraryPoints: schedulePoints
           .whereType<Map<String, dynamic>>()
           .map(BrotherhoodItineraryPoint.fromJson)
           .where((point) => point.name.isNotEmpty)
           .toList(growable: false),
+    );
+  }
+}
+
+class BrotherhoodRoutePoint {
+  const BrotherhoodRoutePoint({
+    required this.latitude,
+    required this.longitude,
+  });
+
+  final double? latitude;
+  final double? longitude;
+  bool get hasLocation => latitude != null && longitude != null;
+
+  factory BrotherhoodRoutePoint.fromJson(Map<String, dynamic> json) {
+    return BrotherhoodRoutePoint(
+      latitude: _toDouble(json['lat'] ?? json['latitude']),
+      longitude: _toDouble(json['lng'] ?? json['lon'] ?? json['longitude']),
     );
   }
 }
@@ -111,7 +150,9 @@ class BrotherhoodItineraryPoint {
     final rawPlanned = json['planned_at'];
     return BrotherhoodItineraryPoint(
       name: (json['name'] ?? '') as String,
-      plannedAt: rawPlanned is String ? _parseDateTimeWallClock(rawPlanned) : null,
+      plannedAt: rawPlanned is String
+          ? _parseDateTimeWallClock(rawPlanned)
+          : null,
       latitude: _toDouble(json['latitude']),
       longitude: _toDouble(json['longitude']),
     );

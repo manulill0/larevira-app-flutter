@@ -479,12 +479,24 @@ class _MapTabState extends State<_MapTab> {
       .where((point) => point.hasLocation)
       .toList(growable: false);
 
-  List<MapPoint> get _routePoints => _pointsWithLocation
+  List<MapPoint> get _scheduleRoutePoints => _pointsWithLocation
       .map(
         (point) =>
             MapPoint(latitude: point.latitude!, longitude: point.longitude!),
       )
       .toList(growable: false);
+
+  List<MapPoint> get _officialRoutePoints => widget.detail.routePoints
+      .where((point) => point.hasLocation)
+      .map(
+        (point) =>
+            MapPoint(latitude: point.latitude!, longitude: point.longitude!),
+      )
+      .toList(growable: false);
+
+  List<MapPoint> get _routePoints => _officialRoutePoints.length >= 2
+      ? _officialRoutePoints
+      : _scheduleRoutePoints;
 
   CameraOptions get _initialCamera =>
       cameraForPoints(_routePoints, fallbackZoom: 14);
@@ -635,7 +647,7 @@ class _MapTabState extends State<_MapTab> {
                 child: const Icon(Icons.center_focus_strong),
               ),
             ),
-            if (_pointsWithLocation.isEmpty)
+            if (_routePoints.isEmpty)
               const Center(
                 child: Card(
                   child: Padding(

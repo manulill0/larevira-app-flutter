@@ -5,15 +5,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiClient {
   ApiClient({required String baseUrl})
-      : _dio = Dio(
-          BaseOptions(
-            baseUrl: baseUrl,
-            connectTimeout: const Duration(seconds: 10),
-            receiveTimeout: const Duration(seconds: 12),
-            sendTimeout: const Duration(seconds: 10),
-            responseType: ResponseType.json,
-          ),
-        );
+    : _dio = Dio(
+        BaseOptions(
+          baseUrl: baseUrl,
+          connectTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 12),
+          sendTimeout: const Duration(seconds: 10),
+          responseType: ResponseType.json,
+        ),
+      );
 
   final Dio _dio;
   static final SharedPreferencesAsync _prefs = SharedPreferencesAsync();
@@ -49,6 +49,18 @@ class ApiClient {
       }
       rethrow;
     }
+  }
+
+  Future<Response<dynamic>> post(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    return _dio.post<dynamic>(
+      path,
+      data: data,
+      queryParameters: queryParameters,
+    );
   }
 
   Future<Response<dynamic>> _requestWithRetry({

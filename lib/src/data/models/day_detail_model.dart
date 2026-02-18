@@ -45,10 +45,17 @@ class DayProcessionEvent {
   final List<SchedulePoint> schedulePoints;
 
   factory DayProcessionEvent.fromJson(Map<String, dynamic> json) {
-    final brotherhood = (json['brotherhood'] as Map<String, dynamic>? ?? const {});
-    final rawPoints = (json['schedule_points'] as List<dynamic>? ?? const []);
-    final route = (json['route'] as Map<String, dynamic>? ?? const {});
-    final rawRouteWaypoints = (route['waypoints'] as List<dynamic>? ?? const []);
+    final brotherhood =
+        (json['brotherhood'] as Map<String, dynamic>? ?? const {});
+    final itinerary = (json['itinerary'] as Map<String, dynamic>? ?? const {});
+    final rawPoints =
+        (itinerary['schedule_points'] as List<dynamic>? ?? const []);
+    final rawRoutePathPoints =
+        (itinerary['path_points'] as List<dynamic>? ?? const []);
+    final rawRoutePolyline =
+        (itinerary['polyline'] as List<dynamic>? ?? const []);
+    final rawRouteWaypoints =
+        (itinerary['waypoints'] as List<dynamic>? ?? const []);
 
     return DayProcessionEvent(
       status: (json['status'] ?? 'scheduled') as String,
@@ -56,11 +63,16 @@ class DayProcessionEvent {
       brotherhoodName: (brotherhood['name'] ?? 'Hermandad') as String,
       brotherhoodSlug: (brotherhood['slug'] ?? '') as String,
       brotherhoodColorHex: (brotherhood['color_hex'] ?? '#8B1E3F') as String,
-      routePoints: rawRouteWaypoints
-          .whereType<Map<String, dynamic>>()
-          .map(GeoPoint.fromJson)
-          .where((point) => point.isValid)
-          .toList(growable: false),
+      routePoints:
+          (rawRoutePathPoints.isNotEmpty
+                  ? rawRoutePathPoints
+                  : (rawRoutePolyline.isNotEmpty
+                        ? rawRoutePolyline
+                        : rawRouteWaypoints))
+              .whereType<Map<String, dynamic>>()
+              .map(GeoPoint.fromJson)
+              .where((point) => point.isValid)
+              .toList(growable: false),
       schedulePoints: rawPoints
           .whereType<Map<String, dynamic>>()
           .map(SchedulePoint.fromJson)
@@ -94,10 +106,7 @@ class SchedulePoint {
 }
 
 class GeoPoint {
-  const GeoPoint({
-    required this.latitude,
-    required this.longitude,
-  });
+  const GeoPoint({required this.latitude, required this.longitude});
 
   final double? latitude;
   final double? longitude;

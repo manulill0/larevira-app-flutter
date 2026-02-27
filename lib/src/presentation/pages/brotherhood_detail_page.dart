@@ -653,7 +653,7 @@ class _MapTabState extends State<_MapTab> {
                   child: Padding(
                     padding: EdgeInsets.all(14),
                     child: Text(
-                      'No hay waypoints con coordenadas para esta hermandad.',
+                      'No hay recorrido KML disponible para esta hermandad.',
                     ),
                   ),
                 ),

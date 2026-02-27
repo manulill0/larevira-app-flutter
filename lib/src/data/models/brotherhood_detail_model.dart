@@ -56,8 +56,6 @@ class BrotherhoodDetail {
         (itinerary['path_points'] as List<dynamic>? ?? const []);
     final rawRoutePolyline =
         (itinerary['polyline'] as List<dynamic>? ?? const []);
-    final rawRouteWaypoints =
-        (itinerary['waypoints'] as List<dynamic>? ?? const []);
     final schedulePoints =
         (itinerary['schedule_points'] as List<dynamic>? ?? const []);
 
@@ -96,11 +94,7 @@ class BrotherhoodDetail {
       departureAt: departureAt,
       routeDescription: (itinerary['description'] ?? '') as String,
       routePoints:
-          (rawRoutePathPoints.isNotEmpty
-                  ? rawRoutePathPoints
-                  : (rawRoutePolyline.isNotEmpty
-                        ? rawRoutePolyline
-                        : rawRouteWaypoints))
+          (rawRoutePathPoints.isNotEmpty ? rawRoutePathPoints : rawRoutePolyline)
               .whereType<Map<String, dynamic>>()
               .map(BrotherhoodRoutePoint.fromJson)
               .where((point) => point.hasLocation)

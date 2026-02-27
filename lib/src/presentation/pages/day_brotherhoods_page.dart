@@ -48,23 +48,36 @@ class DayBrotherhoodsPage extends StatefulWidget {
 class _DayBrotherhoodsPageState extends State<DayBrotherhoodsPage> {
   late int _selectedIndex;
   late Future<DayDetail> _future;
+  late _DayTimeController _dayTimeController;
 
   @override
   void initState() {
     super.initState();
     _selectedIndex = widget.initialTabIndex.clamp(0, 3).toInt();
     _future = _load();
+    _dayTimeController = _DayTimeController(widget.simulatedClockController);
   }
 
   @override
   void didUpdateWidget(covariant DayBrotherhoodsPage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.simulatedClockController != widget.simulatedClockController) {
+      _dayTimeController.dispose();
+      _dayTimeController = _DayTimeController(widget.simulatedClockController);
+    }
     if (oldWidget.daySlug != widget.daySlug || oldWidget.mode != widget.mode) {
       setState(() {
         _selectedIndex = 0;
         _future = _load();
+        _dayTimeController.resetOffset();
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _dayTimeController.dispose();
+    super.dispose();
   }
 
   Future<DayDetail> _load() {
@@ -114,10 +127,13 @@ class _DayBrotherhoodsPageState extends State<DayBrotherhoodsPage> {
                 daySlug: widget.daySlug,
                 dayName: widget.dayName,
                 events: detail.processionEvents,
-                simulatedClockController: widget.simulatedClockController,
+                timeController: _dayTimeController,
                 planningController: widget.planningController,
               ),
-              _DayMapTab(events: detail.processionEvents),
+              _DayMapTab(
+                events: detail.processionEvents,
+                timeController: _dayTimeController,
+              ),
               _DayBrotherhoodsTab(
                 citySlug: widget.config.citySlug,
                 year: widget.config.editionYear,
@@ -253,6 +269,111 @@ class _DayBrotherhoodsPageState extends State<DayBrotherhoodsPage> {
 
 enum _ScheduleViewMode { cards, table }
 
+class _DayTimeController extends ChangeNotifier {
+  _DayTimeController(this._simulatedClockController) {
+    _simulatedClockController.addListener(_handleClockChanged);
+  }
+
+  final SimulatedClockController _simulatedClockController;
+  int _offsetMinutes = 0;
+
+  int get offsetMinutes => _offsetMinutes;
+
+  DateTime get selectedTime {
+    final source = _simulatedClockController.now;
+    final totalMinutes = source.hour * 60 + source.minute;
+    final rounded = ((totalMinutes + 7) ~/ 15) * 15;
+    final dayStart = DateTime(source.year, source.month, source.day);
+    return dayStart.add(Duration(minutes: rounded + _offsetMinutes));
+  }
+
+  void addOffset(int minutes) {
+    if (minutes == 0) {
+      return;
+    }
+    _offsetMinutes += minutes;
+    notifyListeners();
+  }
+
+  void resetOffset() {
+    if (_offsetMinutes == 0) {
+      return;
+    }
+    _offsetMinutes = 0;
+    notifyListeners();
+  }
+
+  void _handleClockChanged() {
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _simulatedClockController.removeListener(_handleClockChanged);
+    super.dispose();
+  }
+}
+
+class _DayTimeSelectorCard extends StatelessWidget {
+  const _DayTimeSelectorCard({
+    required this.timeController,
+    this.compact = false,
+    this.framed = true,
+  });
+
+  final _DayTimeController timeController;
+  final bool compact;
+  final bool framed;
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedTime = timeController.selectedTime;
+    final content = Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Hora seleccionada: ${DateFormat('HH:mm').format(selectedTime)}',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: compact ? 6 : 8,
+            runSpacing: compact ? 6 : 8,
+            children: [
+              for (final delta in const [-60, -30, -15, 15, 30, 60])
+                OutlinedButton(
+                  onPressed: () => timeController.addOffset(delta),
+                  style: compact
+                      ? OutlinedButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                        )
+                      : null,
+                  child: Text(delta.isNegative ? '$delta' : '+$delta'),
+                ),
+              TextButton(
+                onPressed: timeController.resetOffset,
+                child: const Text('Ahora'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (!framed) {
+      return content;
+    }
+
+    return Card(child: content);
+  }
+}
+
 class _DayScheduleTab extends StatefulWidget {
   const _DayScheduleTab({
     required this.citySlug,
@@ -261,7 +382,7 @@ class _DayScheduleTab extends StatefulWidget {
     required this.daySlug,
     required this.dayName,
     required this.events,
-    required this.simulatedClockController,
+    required this.timeController,
     required this.planningController,
   });
 
@@ -271,7 +392,7 @@ class _DayScheduleTab extends StatefulWidget {
   final String daySlug;
   final String dayName;
   final List<DayProcessionEvent> events;
-  final SimulatedClockController simulatedClockController;
+  final _DayTimeController timeController;
   final PlanningController planningController;
 
   @override
@@ -280,14 +401,6 @@ class _DayScheduleTab extends StatefulWidget {
 
 class _DayScheduleTabState extends State<_DayScheduleTab> {
   _ScheduleViewMode _mode = _ScheduleViewMode.cards;
-  int _offsetMinutes = 0;
-
-  DateTime _roundToNearestQuarterHour(DateTime source) {
-    final totalMinutes = source.hour * 60 + source.minute;
-    final rounded = ((totalMinutes + 7) ~/ 15) * 15;
-    final dayStart = DateTime(source.year, source.month, source.day);
-    return dayStart.add(Duration(minutes: rounded));
-  }
 
   SchedulePoint? _currentPointAt(
     DayProcessionEvent event, {
@@ -590,11 +703,9 @@ class _DayScheduleTabState extends State<_DayScheduleTab> {
       listenable: widget.planningController,
       builder: (context, child) {
         return ListenableBuilder(
-          listenable: widget.simulatedClockController,
+          listenable: widget.timeController,
           builder: (context, child) {
-            final baseNow = _roundToNearestQuarterHour(
-              widget.simulatedClockController.now,
-            ).add(Duration(minutes: _offsetMinutes));
+            final baseNow = widget.timeController.selectedTime;
             final slots = _tableSlots(sortedEvents);
 
             return ListView(
@@ -641,48 +752,8 @@ class _DayScheduleTabState extends State<_DayScheduleTab> {
                     ),
                   )
                 else if (_mode == _ScheduleViewMode.cards) ...[
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Hora seleccionada: ${DateFormat('HH:mm').format(baseNow)}',
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              for (final delta in const [
-                                -60,
-                                -30,
-                                -15,
-                                15,
-                                30,
-                                60,
-                              ])
-                                OutlinedButton(
-                                  onPressed: () {
-                                    setState(() => _offsetMinutes += delta);
-                                  },
-                                  child: Text(
-                                    delta.isNegative ? '$delta' : '+$delta',
-                                  ),
-                                ),
-                              TextButton(
-                                onPressed: () {
-                                  setState(() => _offsetMinutes = 0);
-                                },
-                                child: const Text('Ahora'),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
+                  _DayTimeSelectorCard(
+                    timeController: widget.timeController,
                   ),
                   const SizedBox(height: 8),
                   ...sortedEvents.map((event) {
@@ -959,9 +1030,13 @@ class _DayScheduleTabState extends State<_DayScheduleTab> {
 }
 
 class _DayMapTab extends StatefulWidget {
-  const _DayMapTab({required this.events});
+  const _DayMapTab({
+    required this.events,
+    required this.timeController,
+  });
 
   final List<DayProcessionEvent> events;
+  final _DayTimeController timeController;
 
   @override
   State<_DayMapTab> createState() => _DayMapTabState();
@@ -971,65 +1046,258 @@ class _DayMapTabState extends State<_DayMapTab> {
   MapboxMap? _map;
   PolylineAnnotationManager? _polylineManager;
   CircleAnnotationManager? _circleManager;
+  String _selectedBrotherhoodSlug = 'all';
 
-  List<_RouteLine> get _routeLines => widget.events
-      .asMap()
-      .entries
-      .map(
-        (entry) => _RouteLine(
-          points: entry.value.routePoints
-              .where((point) => point.isValid)
-              .map(
-                (point) => MapPoint(
-                  latitude: point.latitude!,
-                  longitude: point.longitude!,
-                ),
-              )
-              .toList(growable: false),
-          color: parseHexColor(entry.value.brotherhoodColorHex),
-        ),
-      )
-      .where((line) => line.points.length >= 2)
-      .toList(growable: false);
+  int _nearestRouteIndexFrom(
+    List<MapPoint> route,
+    MapPoint target,
+    int startIndex,
+  ) {
+    var bestIndex = startIndex;
+    var bestDistance = double.infinity;
 
-  List<_ScheduleMarkerData> get _markers {
-    final result = <_ScheduleMarkerData>[];
+    for (var i = startIndex; i < route.length; i++) {
+      final latDiff = route[i].latitude - target.latitude;
+      final lngDiff = route[i].longitude - target.longitude;
+      final sqDistance = (latDiff * latDiff) + (lngDiff * lngDiff);
+      if (sqDistance < bestDistance) {
+        bestDistance = sqDistance;
+        bestIndex = i;
+      }
+    }
+
+    return bestIndex;
+  }
+
+  double? _routeIndexAtTime(List<_TimedRoutePoint> points, DateTime at) {
+    if (points.isEmpty) {
+      return null;
+    }
+    if (at.isBefore(points.first.time)) {
+      return null;
+    }
+    if (!at.isBefore(points.last.time)) {
+      return points.last.routeIndex.toDouble();
+    }
+
+    for (var i = 0; i < points.length - 1; i++) {
+      final a = points[i];
+      final b = points[i + 1];
+      if (at.isBefore(a.time) || at.isAfter(b.time)) {
+        continue;
+      }
+
+      final totalMs = b.time.difference(a.time).inMilliseconds;
+      if (totalMs <= 0) {
+        return b.routeIndex.toDouble();
+      }
+      final partMs = at
+          .difference(a.time)
+          .inMilliseconds
+          .clamp(0, totalMs);
+      final ratio = partMs / totalMs;
+      return a.routeIndex + ((b.routeIndex - a.routeIndex) * ratio);
+    }
+
+    return points.last.routeIndex.toDouble();
+  }
+
+  MapPoint _pointAtIndex(List<MapPoint> route, double index) {
+    final lastIndex = route.length - 1;
+    if (lastIndex <= 0) {
+      return route.first;
+    }
+
+    final clamped = index.clamp(0, lastIndex.toDouble());
+    final low = clamped.floor();
+    final high = clamped.ceil();
+    if (low == high) {
+      return route[low];
+    }
+
+    final ratio = clamped - low;
+    final start = route[low];
+    final end = route[high];
+    return MapPoint(
+      latitude: start.latitude + ((end.latitude - start.latitude) * ratio),
+      longitude: start.longitude + ((end.longitude - start.longitude) * ratio),
+    );
+  }
+
+  List<MapPoint> _sliceRoute(List<MapPoint> route, double from, double to) {
+    if (route.isEmpty) {
+      return const [];
+    }
+
+    var start = from;
+    var end = to;
+    if (end < start) {
+      final temp = start;
+      start = end;
+      end = temp;
+    }
+
+    final startPoint = _pointAtIndex(route, start);
+    final endPoint = _pointAtIndex(route, end);
+    final startFloor = start.floor();
+    final endCeil = end.ceil();
+
+    final points = <MapPoint>[startPoint];
+    for (var i = startFloor + 1; i < endCeil; i++) {
+      if (i >= 0 && i < route.length) {
+        points.add(route[i]);
+      }
+    }
+    points.add(endPoint);
+
+    if (points.length == 1 && route.length >= 2) {
+      final idx = startFloor.clamp(0, route.length - 1);
+      final neighbor = (idx + 1).clamp(0, route.length - 1);
+      if (neighbor != idx) {
+        points.add(route[neighbor]);
+      }
+    }
+
+    return points;
+  }
+
+  Iterable<DayProcessionEvent> get _filteredEvents sync* {
     for (final event in widget.events) {
-      for (final point in event.schedulePoints) {
-        if (!point.hasLocation) {
-          continue;
-        }
-        result.add(
-          _ScheduleMarkerData(
-            location: MapPoint(
+      if (_selectedBrotherhoodSlug != 'all' &&
+          event.brotherhoodSlug != _selectedBrotherhoodSlug) {
+        continue;
+      }
+      yield event;
+    }
+  }
+
+  List<_VisibleRoute> _visibleRoutes() {
+    return _filteredEvents
+        .map(
+          (event) => _VisibleRoute(
+            color: parseHexColor(event.brotherhoodColorHex),
+            points: event.routePoints
+                .where((point) => point.isValid)
+                .map(
+                  (point) => MapPoint(
+                    latitude: point.latitude!,
+                    longitude: point.longitude!,
+                  ),
+                )
+                .toList(growable: false),
+          ),
+        )
+        .where((route) => route.points.length >= 2)
+        .toList(growable: false);
+  }
+
+  List<_ActiveTrack> _activeTracksFor(DateTime selectedTime) {
+    final result = <_ActiveTrack>[];
+
+    for (final event in _filteredEvents) {
+      final route = event.routePoints
+          .where((point) => point.isValid)
+          .map(
+            (point) => MapPoint(
               latitude: point.latitude!,
               longitude: point.longitude!,
             ),
-            brotherhoodName: event.brotherhoodName,
-            pointName: point.name,
-            plannedAt: point.plannedAt,
-            color: parseHexColor(event.brotherhoodColorHex),
+          )
+          .toList(growable: false);
+      if (route.length < 2) {
+        continue;
+      }
+
+      final timedSchedule = event.schedulePoints
+          .where((point) => point.hasLocation && point.plannedAt != null)
+          .toList(growable: false)
+        ..sort((a, b) => a.plannedAt!.compareTo(b.plannedAt!));
+      if (timedSchedule.isEmpty) {
+        continue;
+      }
+
+      final timedRoutePoints = <_TimedRoutePoint>[];
+      var searchFrom = 0;
+      for (final point in timedSchedule) {
+        final routeIndex = _nearestRouteIndexFrom(
+          route,
+          MapPoint(latitude: point.latitude!, longitude: point.longitude!),
+          searchFrom,
+        );
+        searchFrom = routeIndex;
+        timedRoutePoints.add(
+          _TimedRoutePoint(
+            time: point.plannedAt!,
+            routeIndex: routeIndex.toDouble(),
           ),
         );
       }
+
+      if (timedRoutePoints.isEmpty) {
+        continue;
+      }
+
+      final headIndex = _routeIndexAtTime(timedRoutePoints, selectedTime);
+      if (headIndex == null) {
+        continue;
+      }
+
+      final passMinutes = (event.passDurationMinutes ?? 0).clamp(0, 240);
+      final routeEnd = timedRoutePoints.last.time;
+
+      if (passMinutes > 0 &&
+          selectedTime.isAfter(routeEnd.add(Duration(minutes: passMinutes)))) {
+        continue;
+      }
+
+      final tailTime = selectedTime.subtract(Duration(minutes: passMinutes));
+      final tailIndex = passMinutes <= 0
+          ? headIndex
+          : (_routeIndexAtTime(timedRoutePoints, tailTime) ??
+                timedRoutePoints.first.routeIndex);
+
+      final segment = _sliceRoute(route, tailIndex, headIndex);
+      if (segment.length < 2) {
+        continue;
+      }
+
+      result.add(
+        _ActiveTrack(
+          brotherhoodSlug: event.brotherhoodSlug,
+          brotherhoodName: event.brotherhoodName,
+          color: parseHexColor(event.brotherhoodColorHex),
+          points: segment,
+          head: _pointAtIndex(route, headIndex),
+        ),
+      );
     }
+
     return result;
   }
 
-  List<MapPoint> get _allPoints {
-    final route = _routeLines.expand((line) => line.points);
-    final markers = _markers.map((marker) => marker.location);
-    return [...route, ...markers];
+  List<MapPoint> _allRoutePoints() {
+    return widget.events
+        .expand((event) => event.routePoints)
+        .where((point) => point.isValid)
+        .map(
+          (point) => MapPoint(
+            latitude: point.latitude!,
+            longitude: point.longitude!,
+          ),
+        )
+        .toList(growable: false);
   }
 
-  CameraOptions get _initialCamera =>
-      cameraForPoints(_allPoints, fallbackZoom: 13.8);
-
-  Future<void> _fitToBounds() async {
-    await easeToPoints(_map, _allPoints, fallbackZoom: 13.8);
+  Future<void> _fitToBounds(List<_ActiveTrack> activeTracks) async {
+    final activePoints = activeTracks.expand((track) => track.points).toList();
+    final visibleRoutes = _visibleRoutes();
+    final visiblePoints = visibleRoutes.expand((route) => route.points).toList();
+    final fallback = visiblePoints.isNotEmpty ? visiblePoints : _allRoutePoints();
+    final pointsForFit = activePoints.isNotEmpty ? activePoints : fallback;
+    await easeToPoints(_map, pointsForFit, fallbackZoom: 13.8);
   }
 
-  Future<void> _syncAnnotations() async {
+  Future<void> _syncAnnotations(DateTime selectedTime) async {
     final polylineManager = _polylineManager;
     final circleManager = _circleManager;
     if (polylineManager == null || circleManager == null) {
@@ -1039,28 +1307,40 @@ class _DayMapTabState extends State<_DayMapTab> {
     await polylineManager.deleteAll();
     await circleManager.deleteAll();
 
-    for (final line in _routeLines) {
+    final visibleRoutes = _visibleRoutes();
+    final activeTracks = _activeTracksFor(selectedTime);
+    for (final route in visibleRoutes) {
       await polylineManager.create(
         PolylineAnnotationOptions(
           geometry: LineString(
-            coordinates: line.points
+            coordinates: route.points
                 .map((point) => point.toPoint().coordinates)
                 .toList(growable: false),
           ),
-          lineColor: line.color.toARGB32(),
-          lineWidth: 4,
+          lineColor: route.color.withAlpha(96).toARGB32(),
+          lineWidth: 3,
         ),
       );
     }
-
-    for (final marker in _markers) {
+    for (final track in activeTracks) {
+      await polylineManager.create(
+        PolylineAnnotationOptions(
+          geometry: LineString(
+            coordinates: track.points
+                .map((point) => point.toPoint().coordinates)
+                .toList(growable: false),
+          ),
+          lineColor: track.color.toARGB32(),
+          lineWidth: 5,
+        ),
+      );
       await circleManager.create(
         CircleAnnotationOptions(
-          geometry: marker.location.toPoint(),
-          circleColor: marker.color.toARGB32(),
-          circleRadius: 5.5,
+          geometry: track.head.toPoint(),
+          circleColor: track.color.toARGB32(),
+          circleRadius: 6.5,
           circleStrokeColor: Colors.white.toARGB32(),
-          circleStrokeWidth: 1.2,
+          circleStrokeWidth: 1.6,
         ),
       );
     }
@@ -1072,51 +1352,154 @@ class _DayMapTabState extends State<_DayMapTab> {
         .createPolylineAnnotationManager();
     _circleManager = await mapboxMap.annotations
         .createCircleAnnotationManager();
-    await _syncAnnotations();
+    await _syncAnnotations(widget.timeController.selectedTime);
   }
 
   @override
   void didUpdateWidget(covariant _DayMapTab oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _syncAnnotations();
+    if (_selectedBrotherhoodSlug != 'all' &&
+        widget.events.every(
+          (event) => event.brotherhoodSlug != _selectedBrotherhoodSlug,
+        )) {
+      _selectedBrotherhoodSlug = 'all';
+    }
+    _syncAnnotations(widget.timeController.selectedTime);
   }
 
   @override
   Widget build(BuildContext context) {
-    final markers = _markers;
-    final routeLines = _routeLines;
+    return ListenableBuilder(
+      listenable: widget.timeController,
+      builder: (context, child) {
+        final selectedTime = widget.timeController.selectedTime;
+        final selectableBrotherhoods = widget.events
+            .where((event) => event.brotherhoodSlug.isNotEmpty)
+            .toList(growable: false);
+        final effectiveSelectedBrotherhoodSlug =
+            _selectedBrotherhoodSlug == 'all' ||
+                selectableBrotherhoods.any(
+                  (event) =>
+                      event.brotherhoodSlug == _selectedBrotherhoodSlug,
+                )
+            ? _selectedBrotherhoodSlug
+            : 'all';
+        if (effectiveSelectedBrotherhoodSlug != _selectedBrotherhoodSlug) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {
+                _selectedBrotherhoodSlug = effectiveSelectedBrotherhoodSlug;
+              });
+            }
+          });
+        }
+        final activeTracks = _activeTracksFor(selectedTime);
+        final visibleRoutes = _visibleRoutes();
+        final visiblePoints = visibleRoutes.expand((route) => route.points).toList();
+        final allRoutePoints = _allRoutePoints();
+        final initialPoints = activeTracks.expand((track) => track.points).toList();
+        final cameraPoints = initialPoints.isNotEmpty
+            ? initialPoints
+            : (visiblePoints.isNotEmpty ? visiblePoints : allRoutePoints);
 
-    return Stack(
-      children: [
-        if (kMapboxAccessToken.isEmpty)
-          const MissingMapboxTokenCard()
-        else
-          MapWidget(
-            key: const ValueKey('day-mapbox-map'),
-            styleUri: kMapboxStyleUri,
-            gestureRecognizers: kMapGestureRecognizers,
-            cameraOptions: _initialCamera,
-            onMapCreated: _onMapCreated,
-          ),
-        Positioned(
-          right: 12,
-          top: 12,
-          child: FloatingActionButton.small(
-            heroTag: 'day-map-fit-fab',
-            onPressed: _fitToBounds,
-            child: const Icon(Icons.center_focus_strong),
-          ),
-        ),
-        if (markers.isEmpty && routeLines.isEmpty)
-          const Center(
-            child: Card(
-              child: Padding(
-                padding: EdgeInsets.all(14),
-                child: Text('No hay coordenadas cargadas para esta jornada.'),
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _syncAnnotations(selectedTime);
+        });
+
+        return Stack(
+          children: [
+            if (kMapboxAccessToken.isEmpty)
+              const MissingMapboxTokenCard()
+            else
+              MapWidget(
+                key: const ValueKey('day-mapbox-map'),
+                styleUri: kMapboxStyleUri,
+                gestureRecognizers: kMapGestureRecognizers,
+                cameraOptions: cameraForPoints(cameraPoints, fallbackZoom: 13.8),
+                onMapCreated: _onMapCreated,
+              ),
+            Positioned(
+              left: 12,
+              right: 72,
+              top: 12,
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Hermandad',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: effectiveSelectedBrotherhoodSlug,
+                            isDense: true,
+                            isExpanded: true,
+                            items: [
+                              const DropdownMenuItem(
+                                value: 'all',
+                                child: Text('Todas'),
+                              ),
+                              ...selectableBrotherhoods
+                                  .map(
+                                    (event) => DropdownMenuItem(
+                                      value: event.brotherhoodSlug,
+                                      child: Text(event.brotherhoodName),
+                                    ),
+                                  ),
+                            ],
+                            onChanged: (value) {
+                              if (value == null) {
+                                return;
+                              }
+                              setState(() => _selectedBrotherhoodSlug = value);
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      _DayTimeSelectorCard(
+                        timeController: widget.timeController,
+                        compact: true,
+                        framed: false,
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
-          ),
-      ],
+            Positioned(
+              right: 12,
+              top: 12,
+              child: FloatingActionButton.small(
+                heroTag: 'day-map-fit-fab',
+                onPressed: () => _fitToBounds(activeTracks),
+                child: const Icon(Icons.center_focus_strong),
+              ),
+            ),
+            if (activeTracks.isEmpty)
+              const Center(
+                child: Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(14),
+                    child: Text(
+                      'No hay tramos activos para la hora seleccionada.',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -1638,27 +2021,35 @@ class _DayPlanningTabState extends State<_DayPlanningTab> {
   }
 }
 
-class _RouteLine {
-  const _RouteLine({required this.points, required this.color});
-  final List<MapPoint> points;
-  final Color color;
-}
-
-class _ScheduleMarkerData {
-  const _ScheduleMarkerData({
-    required this.location,
+class _ActiveTrack {
+  const _ActiveTrack({
+    required this.brotherhoodSlug,
     required this.brotherhoodName,
-    required this.pointName,
-    required this.plannedAt,
     required this.color,
+    required this.points,
+    required this.head,
   });
 
-  final MapPoint location;
+  final String brotherhoodSlug;
   final String brotherhoodName;
-  final String pointName;
-  final DateTime? plannedAt;
   final Color color;
+  final List<MapPoint> points;
+  final MapPoint head;
+}
 
-  String get hourLabel =>
-      plannedAt == null ? '--:--' : DateFormat('HH:mm').format(plannedAt!);
+class _VisibleRoute {
+  const _VisibleRoute({
+    required this.color,
+    required this.points,
+  });
+
+  final Color color;
+  final List<MapPoint> points;
+}
+
+class _TimedRoutePoint {
+  const _TimedRoutePoint({required this.time, required this.routeIndex});
+
+  final DateTime time;
+  final double routeIndex;
 }

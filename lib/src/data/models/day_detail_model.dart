@@ -29,6 +29,7 @@ class DayProcessionEvent {
   const DayProcessionEvent({
     required this.status,
     required this.officialNote,
+    required this.passDurationMinutes,
     required this.brotherhoodName,
     required this.brotherhoodSlug,
     required this.brotherhoodColorHex,
@@ -38,6 +39,7 @@ class DayProcessionEvent {
 
   final String status;
   final String officialNote;
+  final int? passDurationMinutes;
   final String brotherhoodName;
   final String brotherhoodSlug;
   final String brotherhoodColorHex;
@@ -54,21 +56,16 @@ class DayProcessionEvent {
         (itinerary['path_points'] as List<dynamic>? ?? const []);
     final rawRoutePolyline =
         (itinerary['polyline'] as List<dynamic>? ?? const []);
-    final rawRouteWaypoints =
-        (itinerary['waypoints'] as List<dynamic>? ?? const []);
 
     return DayProcessionEvent(
       status: (json['status'] ?? 'scheduled') as String,
       officialNote: (json['official_note'] ?? '') as String,
+      passDurationMinutes: (json['pass_duration_minutes'] as num?)?.toInt(),
       brotherhoodName: (brotherhood['name'] ?? 'Hermandad') as String,
       brotherhoodSlug: (brotherhood['slug'] ?? '') as String,
       brotherhoodColorHex: (brotherhood['color_hex'] ?? '#8B1E3F') as String,
       routePoints:
-          (rawRoutePathPoints.isNotEmpty
-                  ? rawRoutePathPoints
-                  : (rawRoutePolyline.isNotEmpty
-                        ? rawRoutePolyline
-                        : rawRouteWaypoints))
+          (rawRoutePathPoints.isNotEmpty ? rawRoutePathPoints : rawRoutePolyline)
               .whereType<Map<String, dynamic>>()
               .map(GeoPoint.fromJson)
               .where((point) => point.isValid)

@@ -8,6 +8,7 @@ class AppConfig {
     required this.planningShareBaseUrl,
     required this.androidStoreUrl,
     required this.iosStoreUrl,
+    required this.firebaseAnalyticsEnabled,
   });
 
   final String baseUrl;
@@ -18,6 +19,7 @@ class AppConfig {
   final String planningShareBaseUrl;
   final String androidStoreUrl;
   final String iosStoreUrl;
+  final bool firebaseAnalyticsEnabled;
 
   static const _validModes = {'all', 'live', 'official'};
 
@@ -52,6 +54,10 @@ class AppConfig {
       'IOS_STORE_URL',
       defaultValue: 'https://apps.apple.com/app/id0000000000',
     );
+    const rawFirebaseAnalyticsEnabled = String.fromEnvironment(
+      'FIREBASE_ANALYTICS_ENABLED',
+      defaultValue: 'true',
+    );
 
     return AppConfig(
       baseUrl: rawBaseUrl,
@@ -64,6 +70,8 @@ class AppConfig {
       planningShareBaseUrl: rawPlanningShareBaseUrl,
       androidStoreUrl: rawAndroidStoreUrl,
       iosStoreUrl: rawIosStoreUrl,
+      firebaseAnalyticsEnabled:
+          rawFirebaseAnalyticsEnabled.toLowerCase() == 'true',
     );
   }
 }

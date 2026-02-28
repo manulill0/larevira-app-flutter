@@ -498,6 +498,69 @@ class _MapTabState extends State<_MapTab> {
       ? _officialRoutePoints
       : _scheduleRoutePoints;
 
+  List<List<MapPoint>> get _baseRouteSections {
+    final sections = widget.detail.routeSections
+        .map(
+          (section) => _DetailRouteSection(
+            color: parseKmlAbgrColor(
+              section.lineColorKml,
+              fallback: kOfficialCourseFallbackColor,
+            ),
+            isOfficialCourse: isOfficialCourseSectionName(section.name),
+            points: section.points
+                .where((point) => point.hasLocation)
+                .map(
+                  (point) => MapPoint(
+                    latitude: point.latitude!,
+                    longitude: point.longitude!,
+                  ),
+                )
+                .toList(growable: false),
+          ),
+        )
+        .where(
+          (section) => !section.isOfficialCourse && section.points.length >= 2,
+        )
+        .map((section) => section.points)
+        .toList(growable: false);
+
+    if (sections.isNotEmpty) {
+      return sections;
+    }
+
+    if (_routePoints.length < 2) {
+      return const [];
+    }
+
+    return [_routePoints];
+  }
+
+  List<_DetailRouteSection> get _officialCourseSections => widget
+      .detail
+      .routeSections
+      .map(
+        (section) => _DetailRouteSection(
+          color: parseKmlAbgrColor(
+            section.lineColorKml,
+            fallback: kOfficialCourseFallbackColor,
+          ),
+          isOfficialCourse: isOfficialCourseSectionName(section.name),
+          points: section.points
+              .where((point) => point.hasLocation)
+              .map(
+                (point) => MapPoint(
+                  latitude: point.latitude!,
+                  longitude: point.longitude!,
+                ),
+              )
+              .toList(growable: false),
+        ),
+      )
+      .where(
+        (section) => section.isOfficialCourse && section.points.length >= 2,
+      )
+      .toList(growable: false);
+
   CameraOptions get _initialCamera =>
       cameraForPoints(_routePoints, fallbackZoom: 14);
 
@@ -537,16 +600,30 @@ class _MapTabState extends State<_MapTab> {
     await circleManager.deleteAll();
 
     final color = parseHexColor(widget.detail.colorHex);
-    if (_routePoints.length >= 2) {
+    for (final sectionPoints in _baseRouteSections) {
       await polylineManager.create(
         PolylineAnnotationOptions(
           geometry: LineString(
-            coordinates: _routePoints
+            coordinates: sectionPoints
                 .map((point) => point.toPoint().coordinates)
                 .toList(growable: false),
           ),
           lineColor: color.toARGB32(),
           lineWidth: 5,
+        ),
+      );
+    }
+
+    for (final section in _officialCourseSections) {
+      await polylineManager.create(
+        PolylineAnnotationOptions(
+          geometry: LineString(
+            coordinates: section.points
+                .map((point) => point.toPoint().coordinates)
+                .toList(growable: false),
+          ),
+          lineColor: section.color.toARGB32(),
+          lineWidth: 6,
         ),
       );
     }
@@ -599,7 +676,9 @@ class _MapTabState extends State<_MapTab> {
             else
               MapWidget(
                 key: const ValueKey('brotherhood-mapbox-map'),
-                styleUri: kMapboxStyleUri,
+                styleUri: mapboxStyleUriForBrightness(
+                  Theme.of(context).brightness,
+                ),
                 gestureRecognizers: kMapGestureRecognizers,
                 cameraOptions: _initialCamera,
                 onMapCreated: _onMapCreated,
@@ -663,6 +742,18 @@ class _MapTabState extends State<_MapTab> {
       },
     );
   }
+}
+
+class _DetailRouteSection {
+  const _DetailRouteSection({
+    required this.color,
+    required this.isOfficialCourse,
+    required this.points,
+  });
+
+  final Color color;
+  final bool isOfficialCourse;
+  final List<MapPoint> points;
 }
 
 enum _WaypointTiming { past, upcoming, unknown }
@@ -756,7 +847,9 @@ class _ItineraryPointMapPageState extends State<_ItineraryPointMapPage> {
           else
             MapWidget(
               key: ValueKey('itinerary-point-mapbox-${widget.point.name}'),
-              styleUri: kMapboxStyleUri,
+              styleUri: mapboxStyleUriForBrightness(
+                Theme.of(context).brightness,
+              ),
               gestureRecognizers: kMapGestureRecognizers,
               cameraOptions: CameraOptions(center: center.toPoint(), zoom: 16),
               onMapCreated: _onMapCreated,

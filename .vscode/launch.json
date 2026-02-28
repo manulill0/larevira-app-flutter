@@ -9,7 +9,7 @@
       "deviceId": "00008130-0009189C1A32001C",
       "flutterMode": "debug",
       "toolArgs": [
-        "--dart-define-from-file=.env.local.json"
+        "--dart-define-from-file=.env.production.json"
       ]
     },
     {
@@ -20,7 +20,7 @@
       "deviceId": "00008020-000A38103CE1002E",
       "flutterMode": "debug",
       "toolArgs": [
-        "--dart-define-from-file=.env.local.json"
+        "--dart-define-from-file=.env.production.json"
       ]
     },
     {
@@ -31,7 +31,7 @@
       "deviceId": "00008130-0009189C1A32001C",
       "flutterMode": "profile",
       "toolArgs": [
-        "--dart-define-from-file=.env.local.json"
+        "--dart-define-from-file=.env.production.json"
       ]
     },
     {
@@ -42,7 +42,7 @@
       "deviceId": "00008130-0009189C1A32001C",
       "flutterMode": "release",
       "toolArgs": [
-        "--dart-define-from-file=.env.local.json"
+        "--dart-define-from-file=.env.production.json"
       ]
     },
     {
@@ -53,7 +53,7 @@
       "deviceId": "R5CTC03Z49X",
       "flutterMode": "debug",
       "toolArgs": [
-        "--dart-define-from-file=.env.local.json"
+        "--dart-define-from-file=.env.production.json"
       ]
     },
     {
@@ -64,7 +64,7 @@
       "deviceId": "R5CTC03Z49X",
       "flutterMode": "profile",
       "toolArgs": [
-        "--dart-define-from-file=.env.local.json"
+        "--dart-define-from-file=.env.production.json"
       ]
     },
     {
@@ -75,7 +75,7 @@
       "deviceId": "R5CTC03Z49X",
       "flutterMode": "release",
       "toolArgs": [
-        "--dart-define-from-file=.env.local.json"
+        "--dart-define-from-file=.env.production.json"
       ]
     }
   ]

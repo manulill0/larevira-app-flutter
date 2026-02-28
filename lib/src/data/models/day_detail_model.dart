@@ -1,3 +1,5 @@
+import 'route_section_model.dart';
+
 class DayDetail {
   const DayDetail({
     required this.slug,
@@ -34,6 +36,7 @@ class DayProcessionEvent {
     required this.brotherhoodSlug,
     required this.brotherhoodColorHex,
     required this.routePoints,
+    required this.routeSections,
     required this.schedulePoints,
   });
 
@@ -44,6 +47,7 @@ class DayProcessionEvent {
   final String brotherhoodSlug;
   final String brotherhoodColorHex;
   final List<GeoPoint> routePoints;
+  final List<RouteSection> routeSections;
   final List<SchedulePoint> schedulePoints;
 
   factory DayProcessionEvent.fromJson(Map<String, dynamic> json) {
@@ -56,6 +60,8 @@ class DayProcessionEvent {
         (itinerary['path_points'] as List<dynamic>? ?? const []);
     final rawRoutePolyline =
         (itinerary['polyline'] as List<dynamic>? ?? const []);
+    final rawRouteSections =
+        (itinerary['route_sections'] as List<dynamic>? ?? const []);
 
     return DayProcessionEvent(
       status: (json['status'] ?? 'scheduled') as String,
@@ -65,11 +71,18 @@ class DayProcessionEvent {
       brotherhoodSlug: (brotherhood['slug'] ?? '') as String,
       brotherhoodColorHex: (brotherhood['color_hex'] ?? '#8B1E3F') as String,
       routePoints:
-          (rawRoutePathPoints.isNotEmpty ? rawRoutePathPoints : rawRoutePolyline)
+          (rawRoutePathPoints.isNotEmpty
+                  ? rawRoutePathPoints
+                  : rawRoutePolyline)
               .whereType<Map<String, dynamic>>()
               .map(GeoPoint.fromJson)
               .where((point) => point.isValid)
               .toList(growable: false),
+      routeSections: rawRouteSections
+          .whereType<Map<String, dynamic>>()
+          .map(RouteSection.fromJson)
+          .where((section) => section.points.length >= 2)
+          .toList(growable: false),
       schedulePoints: rawPoints
           .whereType<Map<String, dynamic>>()
           .map(SchedulePoint.fromJson)

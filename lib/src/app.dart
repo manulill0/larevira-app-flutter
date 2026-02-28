@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'analytics/app_analytics.dart';
 import 'config/app_config.dart';
 import 'data/repositories/larevira_repository.dart';
 import 'presentation/bootstrap_page.dart';
@@ -15,6 +16,7 @@ import 'presentation/theme/theme_controller.dart';
 class LaReviraApp extends StatelessWidget {
   const LaReviraApp({
     super.key,
+    required this.analytics,
     required this.favoritesController,
     required this.planningController,
     required this.offlineSyncController,
@@ -25,6 +27,7 @@ class LaReviraApp extends StatelessWidget {
     required this.config,
   });
 
+  final AppAnalytics? analytics;
   final FavoritesController favoritesController;
   final PlanningController planningController;
   final OfflineSyncController offlineSyncController;
@@ -52,7 +55,11 @@ class LaReviraApp extends StatelessWidget {
           themeMode: themeController.mode,
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),
+          navigatorObservers: analytics == null
+              ? const <NavigatorObserver>[]
+              : <NavigatorObserver>[analytics!.observer],
           home: BootstrapPage(
+            analytics: analytics,
             repository: repository,
             config: config,
             favoritesController: favoritesController,

@@ -44,5 +44,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Local runtime defines (do not commit secrets)
-.env.local.json
+# Runtime defines (keep real values out of Git)
+.env*.json
+!.env.example.json

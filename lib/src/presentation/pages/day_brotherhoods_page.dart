@@ -1,6 +1,11 @@
+import 'dart:async';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../config/app_config.dart';
 import '../../data/models/day_detail_model.dart';
@@ -116,6 +121,8 @@ class _DayBrotherhoodsPageState extends State<DayBrotherhoodsPage> {
               child: Text('No hay datos cargados para esta jornada.'),
             );
           }
+
+          _dayTimeController.syncBaseDayFromEvents(detail.processionEvents);
 
           return IndexedStack(
             index: _selectedIndex,
@@ -276,6 +283,7 @@ class _DayTimeController extends ChangeNotifier {
 
   final SimulatedClockController _simulatedClockController;
   int _offsetMinutes = 0;
+  DateTime? _baseDay;
 
   int get offsetMinutes => _offsetMinutes;
 
@@ -283,8 +291,33 @@ class _DayTimeController extends ChangeNotifier {
     final source = _simulatedClockController.now;
     final totalMinutes = source.hour * 60 + source.minute;
     final rounded = ((totalMinutes + 7) ~/ 15) * 15;
-    final dayStart = DateTime(source.year, source.month, source.day);
+    final baseDay = _baseDay ?? DateTime(source.year, source.month, source.day);
+    final dayStart = DateTime(baseDay.year, baseDay.month, baseDay.day);
     return dayStart.add(Duration(minutes: rounded + _offsetMinutes));
+  }
+
+  void syncBaseDayFromEvents(List<DayProcessionEvent> events) {
+    DateTime? nextBaseDay;
+
+    for (final event in events) {
+      for (final point in event.schedulePoints) {
+        final plannedAt = point.plannedAt;
+        if (plannedAt == null) {
+          continue;
+        }
+
+        final candidate = DateTime(
+          plannedAt.year,
+          plannedAt.month,
+          plannedAt.day,
+        );
+        if (nextBaseDay == null || candidate.isBefore(nextBaseDay)) {
+          nextBaseDay = candidate;
+        }
+      }
+    }
+
+    _baseDay = nextBaseDay;
   }
 
   void addOffset(int minutes) {
@@ -328,40 +361,121 @@ class _DayTimeSelectorCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selectedTime = timeController.selectedTime;
+    final controls = compact
+        ? Row(
+            children: [
+              Expanded(
+                child: _TimeIconButton(
+                  icon: Icons.fast_rewind,
+                  tooltip: 'Restar 60 minutos',
+                  onPressed: () => timeController.addOffset(-60),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: _TimeIconButton(
+                  icon: Icons.keyboard_double_arrow_left,
+                  tooltip: 'Restar 30 minutos',
+                  onPressed: () => timeController.addOffset(-30),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: _TimeIconButton(
+                  icon: Icons.chevron_left,
+                  tooltip: 'Restar 15 minutos',
+                  onPressed: () => timeController.addOffset(-15),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                flex: 2,
+                child: _NowTimeButton(onPressed: timeController.resetOffset),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: _TimeIconButton(
+                  icon: Icons.chevron_right,
+                  tooltip: 'Sumar 15 minutos',
+                  onPressed: () => timeController.addOffset(15),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: _TimeIconButton(
+                  icon: Icons.keyboard_double_arrow_right,
+                  tooltip: 'Sumar 30 minutos',
+                  onPressed: () => timeController.addOffset(30),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: _TimeIconButton(
+                  icon: Icons.fast_forward,
+                  tooltip: 'Sumar 60 minutos',
+                  onPressed: () => timeController.addOffset(60),
+                ),
+              ),
+            ],
+          )
+        : SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _TimeIconButton(
+                  icon: Icons.fast_rewind,
+                  tooltip: 'Restar 60 minutos',
+                  onPressed: () => timeController.addOffset(-60),
+                ),
+                const SizedBox(width: 8),
+                _TimeIconButton(
+                  icon: Icons.keyboard_double_arrow_left,
+                  tooltip: 'Restar 30 minutos',
+                  onPressed: () => timeController.addOffset(-30),
+                ),
+                const SizedBox(width: 8),
+                _TimeIconButton(
+                  icon: Icons.chevron_left,
+                  tooltip: 'Restar 15 minutos',
+                  onPressed: () => timeController.addOffset(-15),
+                ),
+                const SizedBox(width: 8),
+                _NowTimeButton(onPressed: timeController.resetOffset),
+                const SizedBox(width: 8),
+                _TimeIconButton(
+                  icon: Icons.chevron_right,
+                  tooltip: 'Sumar 15 minutos',
+                  onPressed: () => timeController.addOffset(15),
+                ),
+                const SizedBox(width: 8),
+                _TimeIconButton(
+                  icon: Icons.keyboard_double_arrow_right,
+                  tooltip: 'Sumar 30 minutos',
+                  onPressed: () => timeController.addOffset(30),
+                ),
+                const SizedBox(width: 8),
+                _TimeIconButton(
+                  icon: Icons.fast_forward,
+                  tooltip: 'Sumar 60 minutos',
+                  onPressed: () => timeController.addOffset(60),
+                ),
+              ],
+            ),
+          );
     final content = Padding(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(compact ? 8 : 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Hora seleccionada: ${DateFormat('HH:mm').format(selectedTime)}',
-            style: const TextStyle(fontWeight: FontWeight.w700),
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: compact ? 13 : 14,
+            ),
           ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: compact ? 6 : 8,
-            runSpacing: compact ? 6 : 8,
-            children: [
-              for (final delta in const [-60, -30, -15, 15, 30, 60])
-                OutlinedButton(
-                  onPressed: () => timeController.addOffset(delta),
-                  style: compact
-                      ? OutlinedButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
-                          ),
-                        )
-                      : null,
-                  child: Text(delta.isNegative ? '$delta' : '+$delta'),
-                ),
-              TextButton(
-                onPressed: timeController.resetOffset,
-                child: const Text('Ahora'),
-              ),
-            ],
-          ),
+          SizedBox(height: compact ? 6 : 8),
+          controls,
         ],
       ),
     );
@@ -371,6 +485,54 @@ class _DayTimeSelectorCard extends StatelessWidget {
     }
 
     return Card(child: content);
+  }
+}
+
+class _TimeIconButton extends StatelessWidget {
+  const _TimeIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          visualDensity: VisualDensity.compact,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          minimumSize: const ui.Size(44, 44),
+        ),
+        child: Icon(icon, size: 20),
+      ),
+    );
+  }
+}
+
+class _NowTimeButton extends StatelessWidget {
+  const _NowTimeButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton.tonal(
+      onPressed: onPressed,
+      style: FilledButton.styleFrom(
+        visualDensity: VisualDensity.compact,
+        minimumSize: const ui.Size(72, 44),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+      ),
+      child: const Text('Ahora'),
+    );
   }
 }
 
@@ -707,8 +869,7 @@ class _DayScheduleTabState extends State<_DayScheduleTab> {
           builder: (context, child) {
             final baseNow = widget.timeController.selectedTime;
             final slots = _tableSlots(sortedEvents);
-
-            return ListView(
+            final listContent = ListView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               children: [
                 Row(
@@ -752,10 +913,6 @@ class _DayScheduleTabState extends State<_DayScheduleTab> {
                     ),
                   )
                 else if (_mode == _ScheduleViewMode.cards) ...[
-                  _DayTimeSelectorCard(
-                    timeController: widget.timeController,
-                  ),
-                  const SizedBox(height: 8),
                   ...sortedEvents.map((event) {
                     final style = statusStyleFor(event.status);
                     final currentPoint = _currentPointAt(event, at: baseNow);
@@ -1022,6 +1179,23 @@ class _DayScheduleTabState extends State<_DayScheduleTab> {
                 ],
               ],
             );
+
+            if (!hasAnyTimedPoint) {
+              return listContent;
+            }
+
+            return Column(
+              children: [
+                Expanded(child: listContent),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  child: _DayTimeSelectorCard(
+                    timeController: widget.timeController,
+                    compact: true,
+                  ),
+                ),
+              ],
+            );
           },
         );
       },
@@ -1030,10 +1204,7 @@ class _DayScheduleTabState extends State<_DayScheduleTab> {
 }
 
 class _DayMapTab extends StatefulWidget {
-  const _DayMapTab({
-    required this.events,
-    required this.timeController,
-  });
+  const _DayMapTab({required this.events, required this.timeController});
 
   final List<DayProcessionEvent> events;
   final _DayTimeController timeController;
@@ -1046,7 +1217,149 @@ class _DayMapTabState extends State<_DayMapTab> {
   MapboxMap? _map;
   PolylineAnnotationManager? _polylineManager;
   CircleAnnotationManager? _circleManager;
+  Cancelable? _circleTapCancelable;
+  Timer? _pointCalloutTimer;
+  String? _lastAnnotationSignature;
   String _selectedBrotherhoodSlug = 'all';
+  bool _showControls = false;
+  bool _showLegend = false;
+  bool _followUserLocation = false;
+  final ValueNotifier<_MapPointCallout?> _pointCallout = ValueNotifier(null);
+
+  Future<bool> _requestLocationPermission() async {
+    final status = await Permission.locationWhenInUse.status;
+    if (status.isGranted) {
+      return true;
+    }
+
+    final requested = await Permission.locationWhenInUse.request();
+
+    return requested.isGranted;
+  }
+
+  Future<bool> _enableUserLocation() async {
+    final map = _map;
+    if (map == null) {
+      return false;
+    }
+
+    final granted = await _requestLocationPermission();
+    if (!granted) {
+      if (mounted) {
+        setState(() {
+          _followUserLocation = false;
+        });
+      }
+
+      _pointCallout.value = const _MapPointCallout(
+        label: 'Activa la ubicacion para mostrar tu posicion en el mapa.',
+        x: 160,
+        y: 92,
+        latitude: null,
+        longitude: null,
+      );
+      _pointCalloutTimer?.cancel();
+      _pointCalloutTimer = Timer(const Duration(seconds: 5), () {
+        _pointCallout.value = null;
+      });
+
+      return false;
+    }
+
+    try {
+      await map.location.updateSettings(
+        LocationComponentSettings(
+          enabled: true,
+          pulsingEnabled: true,
+          showAccuracyRing: true,
+          puckBearingEnabled: true,
+          puckBearing: PuckBearing.HEADING,
+        ),
+      );
+      return true;
+    } catch (_) {
+      // If the OS permission is missing, Mapbox will reject the location layer.
+      // The map should keep working without blocking the rest of the UI.
+      return false;
+    }
+  }
+
+  Future<void> _centerOnUserLocation() async {
+    final enabled = await _enableUserLocation();
+    if (!enabled || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _followUserLocation = true;
+    });
+  }
+
+  Future<void> _showPointCallout(Map<String, Object> data) async {
+    final map = _map;
+    if (map == null) {
+      return;
+    }
+
+    final brotherhood = (data['brotherhood'] ?? 'Hermandad').toString();
+    final location = (data['location'] ?? 'Punto de paso').toString();
+    final lat = (data['lat'] as num?)?.toDouble();
+    final lng = (data['lng'] as num?)?.toDouble();
+
+    if (lat == null || lng == null) {
+      return;
+    }
+
+    try {
+      final pixel = await map.pixelForCoordinate(
+        Point(coordinates: Position(lng, lat)),
+      );
+
+      _pointCallout.value = _MapPointCallout(
+        label: '$brotherhood · $location',
+        x: pixel.x,
+        y: pixel.y,
+        latitude: lat,
+        longitude: lng,
+      );
+      _pointCalloutTimer?.cancel();
+      _pointCalloutTimer = Timer(const Duration(seconds: 5), () {
+        _pointCallout.value = null;
+      });
+    } catch (_) {
+      // Ignore temporary map projection failures.
+    }
+  }
+
+  Future<void> _refreshPointCalloutPosition() async {
+    final map = _map;
+    final callout = _pointCallout.value;
+    if (map == null || callout == null) {
+      return;
+    }
+
+    final lat = callout.latitude;
+    final lng = callout.longitude;
+    if (lat == null || lng == null) {
+      return;
+    }
+
+    try {
+      final pixel = await map.pixelForCoordinate(
+        Point(coordinates: Position(lng, lat)),
+      );
+
+      _pointCallout.value = _MapPointCallout(
+        label: callout.label,
+        x: pixel.x,
+        y: pixel.y,
+        latitude: lat,
+        longitude: lng,
+      );
+    } catch (_) {
+      // Ignore temporary map projection failures while interacting with the map.
+    }
+  }
 
   int _nearestRouteIndexFrom(
     List<MapPoint> route,
@@ -1091,10 +1404,7 @@ class _DayMapTabState extends State<_DayMapTab> {
       if (totalMs <= 0) {
         return b.routeIndex.toDouble();
       }
-      final partMs = at
-          .difference(a.time)
-          .inMilliseconds
-          .clamp(0, totalMs);
+      final partMs = at.difference(a.time).inMilliseconds.clamp(0, totalMs);
       final ratio = partMs / totalMs;
       return a.routeIndex + ((b.routeIndex - a.routeIndex) * ratio);
     }
@@ -1171,8 +1481,28 @@ class _DayMapTabState extends State<_DayMapTab> {
     }
   }
 
-  List<_VisibleRoute> _visibleRoutes() {
+  bool _isEventVisibleAt(DayProcessionEvent event, DateTime selectedTime) {
+    final timedSchedule =
+        event.schedulePoints
+            .where((point) => point.hasLocation && point.plannedAt != null)
+            .toList(growable: false)
+          ..sort((a, b) => a.plannedAt!.compareTo(b.plannedAt!));
+
+    if (timedSchedule.isEmpty) {
+      return true;
+    }
+
+    final startsAt = timedSchedule.first.plannedAt!;
+    final endsAt = timedSchedule.last.plannedAt!.add(
+      Duration(minutes: (event.passDurationMinutes ?? 0).clamp(0, 240)),
+    );
+
+    return !selectedTime.isBefore(startsAt) && !selectedTime.isAfter(endsAt);
+  }
+
+  List<_VisibleRoute> _visibleRoutes(DateTime selectedTime) {
     return _filteredEvents
+        .where((event) => _isEventVisibleAt(event, selectedTime))
         .map(
           (event) => _VisibleRoute(
             color: parseHexColor(event.brotherhoodColorHex),
@@ -1191,10 +1521,69 @@ class _DayMapTabState extends State<_DayMapTab> {
         .toList(growable: false);
   }
 
+  _VisibleRoute? _officialCourseRoute(DateTime selectedTime) {
+    for (final event in _filteredEvents) {
+      if (!_isEventVisibleAt(event, selectedTime)) {
+        continue;
+      }
+
+      for (final section in event.routeSections) {
+        if (!isOfficialCourseSectionName(section.name)) {
+          continue;
+        }
+
+        final points = section.points
+            .where((point) => point.hasLocation)
+            .map(
+              (point) => MapPoint(
+                latitude: point.latitude!,
+                longitude: point.longitude!,
+              ),
+            )
+            .toList(growable: false);
+
+        if (points.length < 2) {
+          continue;
+        }
+
+        return _VisibleRoute(
+          color: parseKmlAbgrColor(
+            section.lineColorKml,
+            fallback: kOfficialCourseFallbackColor,
+          ),
+          points: points,
+        );
+      }
+    }
+
+    return null;
+  }
+
+  Color _officialCourseLegendColor() {
+    for (final event in _filteredEvents) {
+      for (final section in event.routeSections) {
+        if (!isOfficialCourseSectionName(section.name)) {
+          continue;
+        }
+
+        return parseKmlAbgrColor(
+          section.lineColorKml,
+          fallback: kOfficialCourseFallbackColor,
+        );
+      }
+    }
+
+    return kOfficialCourseFallbackColor;
+  }
+
   List<_ActiveTrack> _activeTracksFor(DateTime selectedTime) {
     final result = <_ActiveTrack>[];
 
     for (final event in _filteredEvents) {
+      if (!_isEventVisibleAt(event, selectedTime)) {
+        continue;
+      }
+
       final route = event.routePoints
           .where((point) => point.isValid)
           .map(
@@ -1208,10 +1597,11 @@ class _DayMapTabState extends State<_DayMapTab> {
         continue;
       }
 
-      final timedSchedule = event.schedulePoints
-          .where((point) => point.hasLocation && point.plannedAt != null)
-          .toList(growable: false)
-        ..sort((a, b) => a.plannedAt!.compareTo(b.plannedAt!));
+      final timedSchedule =
+          event.schedulePoints
+              .where((point) => point.hasLocation && point.plannedAt != null)
+              .toList(growable: false)
+            ..sort((a, b) => a.plannedAt!.compareTo(b.plannedAt!));
       if (timedSchedule.isEmpty) {
         continue;
       }
@@ -1268,6 +1658,11 @@ class _DayMapTabState extends State<_DayMapTab> {
           color: parseHexColor(event.brotherhoodColorHex),
           points: segment,
           head: _pointAtIndex(route, headIndex),
+          locationLabel: _closestSchedulePointName(
+            timedSchedule,
+            timedRoutePoints,
+            headIndex,
+          ),
         ),
       );
     }
@@ -1280,20 +1675,31 @@ class _DayMapTabState extends State<_DayMapTab> {
         .expand((event) => event.routePoints)
         .where((point) => point.isValid)
         .map(
-          (point) => MapPoint(
-            latitude: point.latitude!,
-            longitude: point.longitude!,
-          ),
+          (point) =>
+              MapPoint(latitude: point.latitude!, longitude: point.longitude!),
         )
         .toList(growable: false);
   }
 
   Future<void> _fitToBounds(List<_ActiveTrack> activeTracks) async {
     final activePoints = activeTracks.expand((track) => track.points).toList();
-    final visibleRoutes = _visibleRoutes();
-    final visiblePoints = visibleRoutes.expand((route) => route.points).toList();
-    final fallback = visiblePoints.isNotEmpty ? visiblePoints : _allRoutePoints();
-    final pointsForFit = activePoints.isNotEmpty ? activePoints : fallback;
+    final selectedTime = widget.timeController.selectedTime;
+    final visibleRoutes = _visibleRoutes(selectedTime);
+    final officialCourse = _officialCourseRoute(selectedTime);
+    final visiblePoints = visibleRoutes
+        .expand((route) => route.points)
+        .toList();
+    final fallbackPoints = <MapPoint>[
+      ...visiblePoints,
+      ...?officialCourse?.points,
+    ];
+    final pointsForFit = activePoints.isNotEmpty
+        ? activePoints
+        : fallbackPoints;
+    if (pointsForFit.isEmpty) {
+      return;
+    }
+
     await easeToPoints(_map, pointsForFit, fallbackZoom: 13.8);
   }
 
@@ -1307,7 +1713,8 @@ class _DayMapTabState extends State<_DayMapTab> {
     await polylineManager.deleteAll();
     await circleManager.deleteAll();
 
-    final visibleRoutes = _visibleRoutes();
+    final visibleRoutes = _visibleRoutes(selectedTime);
+    final officialCourse = _officialCourseRoute(selectedTime);
     final activeTracks = _activeTracksFor(selectedTime);
     for (final route in visibleRoutes) {
       await polylineManager.create(
@@ -1317,8 +1724,21 @@ class _DayMapTabState extends State<_DayMapTab> {
                 .map((point) => point.toPoint().coordinates)
                 .toList(growable: false),
           ),
-          lineColor: route.color.withAlpha(96).toARGB32(),
+          lineColor: route.color.withAlpha(28).toARGB32(),
           lineWidth: 3,
+        ),
+      );
+    }
+    if (officialCourse != null) {
+      await polylineManager.create(
+        PolylineAnnotationOptions(
+          geometry: LineString(
+            coordinates: officialCourse.points
+                .map((point) => point.toPoint().coordinates)
+                .toList(growable: false),
+          ),
+          lineColor: officialCourse.color.withAlpha(140).toARGB32(),
+          lineWidth: 9,
         ),
       );
     }
@@ -1338,9 +1758,15 @@ class _DayMapTabState extends State<_DayMapTab> {
         CircleAnnotationOptions(
           geometry: track.head.toPoint(),
           circleColor: track.color.toARGB32(),
-          circleRadius: 6.5,
+          circleRadius: 9,
           circleStrokeColor: Colors.white.toARGB32(),
-          circleStrokeWidth: 1.6,
+          circleStrokeWidth: 2,
+          customData: <String, Object>{
+            'brotherhood': track.brotherhoodName,
+            'location': track.locationLabel,
+            'lat': track.head.latitude,
+            'lng': track.head.longitude,
+          },
         ),
       );
     }
@@ -1352,6 +1778,14 @@ class _DayMapTabState extends State<_DayMapTab> {
         .createPolylineAnnotationManager();
     _circleManager = await mapboxMap.annotations
         .createCircleAnnotationManager();
+    await _enableUserLocation();
+    _circleTapCancelable?.cancel();
+    _circleTapCancelable = _circleManager?.tapEvents(
+      onTap: (annotation) {
+        final data = annotation.customData ?? const <String, Object>{};
+        unawaited(_showPointCallout(data));
+      },
+    );
     await _syncAnnotations(widget.timeController.selectedTime);
   }
 
@@ -1368,139 +1802,394 @@ class _DayMapTabState extends State<_DayMapTab> {
   }
 
   @override
+  void dispose() {
+    _circleTapCancelable?.cancel();
+    _pointCalloutTimer?.cancel();
+    _pointCallout.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: widget.timeController,
       builder: (context, child) {
         final selectedTime = widget.timeController.selectedTime;
-        final selectableBrotherhoods = widget.events
-            .where((event) => event.brotherhoodSlug.isNotEmpty)
-            .toList(growable: false);
-        final effectiveSelectedBrotherhoodSlug =
-            _selectedBrotherhoodSlug == 'all' ||
-                selectableBrotherhoods.any(
-                  (event) =>
-                      event.brotherhoodSlug == _selectedBrotherhoodSlug,
-                )
-            ? _selectedBrotherhoodSlug
-            : 'all';
-        if (effectiveSelectedBrotherhoodSlug != _selectedBrotherhoodSlug) {
+        const effectiveSelectedBrotherhoodSlug = 'all';
+        if (_selectedBrotherhoodSlug != 'all') {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
               setState(() {
-                _selectedBrotherhoodSlug = effectiveSelectedBrotherhoodSlug;
+                _selectedBrotherhoodSlug = 'all';
               });
             }
           });
         }
         final activeTracks = _activeTracksFor(selectedTime);
-        final visibleRoutes = _visibleRoutes();
-        final visiblePoints = visibleRoutes.expand((route) => route.points).toList();
+        final visibleRoutes = _visibleRoutes(selectedTime);
+        final legendEvents = _filteredEvents.toList(growable: false);
+        final legendItems = <_RouteLegendItem>[
+          _RouteLegendItem(
+            label: 'Carrera oficial',
+            color: _officialCourseLegendColor(),
+          ),
+          ...legendEvents.map(
+            (event) => _RouteLegendItem(
+              label: event.brotherhoodName,
+              color: parseHexColor(event.brotherhoodColorHex),
+            ),
+          ),
+        ];
+        final visiblePoints = visibleRoutes
+            .expand((route) => route.points)
+            .toList();
         final allRoutePoints = _allRoutePoints();
-        final initialPoints = activeTracks.expand((track) => track.points).toList();
+        final initialPoints = activeTracks
+            .expand((track) => track.points)
+            .toList();
         final cameraPoints = initialPoints.isNotEmpty
             ? initialPoints
             : (visiblePoints.isNotEmpty ? visiblePoints : allRoutePoints);
 
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _syncAnnotations(selectedTime);
-        });
+        final annotationSignature = [
+          selectedTime.toIso8601String(),
+          effectiveSelectedBrotherhoodSlug,
+          widget.events.length,
+        ].join('|');
+        if (_lastAnnotationSignature != annotationSignature) {
+          _lastAnnotationSignature = annotationSignature;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _syncAnnotations(selectedTime);
+          });
+        }
 
-        return Stack(
-          children: [
-            if (kMapboxAccessToken.isEmpty)
-              const MissingMapboxTokenCard()
-            else
-              MapWidget(
-                key: const ValueKey('day-mapbox-map'),
-                styleUri: kMapboxStyleUri,
-                gestureRecognizers: kMapGestureRecognizers,
-                cameraOptions: cameraForPoints(cameraPoints, fallbackZoom: 13.8),
-                onMapCreated: _onMapCreated,
+        return LayoutBuilder(
+          builder: (context, constraints) => Stack(
+            children: [
+              if (kMapboxAccessToken.isEmpty)
+                const MissingMapboxTokenCard()
+              else
+                MapWidget(
+                  key: const ValueKey('day-mapbox-map'),
+                  styleUri: mapboxStyleUriForBrightness(
+                    Theme.of(context).brightness,
+                  ),
+                  gestureRecognizers: kMapGestureRecognizers,
+                  cameraOptions: cameraForPoints(
+                    cameraPoints,
+                    fallbackZoom: 13.8,
+                  ),
+                  viewport: _followUserLocation
+                      ? const FollowPuckViewportState(
+                          zoom: 15.5,
+                          pitch: 0,
+                          bearing: FollowPuckViewportStateBearingHeading(),
+                        )
+                      : null,
+                  onCameraChangeListener: (_) {
+                    unawaited(_refreshPointCalloutPosition());
+                  },
+                  onMapCreated: _onMapCreated,
+                ),
+              Positioned(
+                right: 12,
+                top: 12,
+                child: Column(
+                  children: [
+                    FloatingActionButton.small(
+                      heroTag: 'day-map-fit-fab',
+                      onPressed: () {
+                        setState(() => _followUserLocation = false);
+                        _fitToBounds(activeTracks);
+                      },
+                      child: const Icon(Icons.center_focus_strong),
+                    ),
+                    const SizedBox(height: 8),
+                    FloatingActionButton.small(
+                      heroTag: 'day-map-location-fab',
+                      onPressed: _centerOnUserLocation,
+                      child: Icon(
+                        _followUserLocation
+                            ? Icons.my_location
+                            : Icons.location_searching,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            Positioned(
-              left: 12,
-              right: 72,
-              top: 12,
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Hermandad',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
+              ValueListenableBuilder<_MapPointCallout?>(
+                valueListenable: _pointCallout,
+                builder: (context, callout, child) {
+                  if (callout == null) {
+                    return const SizedBox.shrink();
+                  }
+
+                  const cardWidth = 220.0;
+                  final left = math.max(
+                    12.0,
+                    math.min(
+                      callout.x - (cardWidth / 2),
+                      constraints.maxWidth - cardWidth - 12,
+                    ),
+                  );
+                  final top = math.max(
+                    12.0,
+                    math.min(callout.y - 68, constraints.maxHeight - 72),
+                  );
+
+                  return Positioned(
+                    left: left,
+                    top: top,
+                    child: GestureDetector(
+                      onTap: () {
+                        _pointCalloutTimer?.cancel();
+                        _pointCallout.value = null;
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Card(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              child: SizedBox(
+                                width: cardWidth,
+                                child: Text(
+                                  callout.label,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          CustomPaint(
+                            size: const ui.Size(18, 10),
+                            painter: _CalloutArrowPainter(
+                              color: Theme.of(context).cardColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+              Positioned(
+                left: 12,
+                top: 12,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FilledButton.tonalIcon(
+                      onPressed: () {
+                        setState(() => _showLegend = !_showLegend);
+                      },
+                      icon: Icon(
+                        _showLegend
+                            ? Icons.visibility_off_outlined
+                            : Icons.palette_outlined,
+                      ),
+                      label: Text(
+                        _showLegend ? 'Ocultar leyenda' : 'Mostrar leyenda',
+                      ),
+                    ),
+                    if (_showLegend) ...[
+                      const SizedBox(height: 8),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
                             horizontal: 10,
                             vertical: 8,
                           ),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: effectiveSelectedBrotherhoodSlug,
-                            isDense: true,
-                            isExpanded: true,
-                            items: [
-                              const DropdownMenuItem(
-                                value: 'all',
-                                child: Text('Todas'),
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxHeight: 220),
+                            child: SingleChildScrollView(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  for (
+                                    var i = 0;
+                                    i < legendItems.length;
+                                    i++
+                                  ) ...[
+                                    _RouteLegendChip(item: legendItems[i]),
+                                    if (i < legendItems.length - 1)
+                                      const SizedBox(height: 6),
+                                  ],
+                                ],
                               ),
-                              ...selectableBrotherhoods
-                                  .map(
-                                    (event) => DropdownMenuItem(
-                                      value: event.brotherhoodSlug,
-                                      child: Text(event.brotherhoodName),
-                                    ),
-                                  ),
-                            ],
-                            onChanged: (value) {
-                              if (value == null) {
-                                return;
-                              }
-                              setState(() => _selectedBrotherhoodSlug = value);
-                            },
+                            ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      _DayTimeSelectorCard(
-                        timeController: widget.timeController,
-                        compact: true,
-                        framed: false,
-                      ),
                     ],
-                  ),
+                  ],
                 ),
               ),
-            ),
-            Positioned(
-              right: 12,
-              top: 12,
-              child: FloatingActionButton.small(
-                heroTag: 'day-map-fit-fab',
-                onPressed: () => _fitToBounds(activeTracks),
-                child: const Icon(Icons.center_focus_strong),
+              Positioned(
+                left: 12,
+                right: 12,
+                bottom: 12,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_showControls)
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: _DayTimeSelectorCard(
+                            timeController: widget.timeController,
+                            compact: true,
+                            framed: false,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.bottomLeft,
+                      child: FilledButton.tonalIcon(
+                        onPressed: () {
+                          setState(() => _showControls = !_showControls);
+                        },
+                        icon: Icon(
+                          _showControls ? Icons.expand_more : Icons.tune,
+                        ),
+                        label: Text(
+                          _showControls
+                              ? 'Ocultar controles'
+                              : 'Mostrar controles',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            if (activeTracks.isEmpty)
-              const Center(
-                child: Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(14),
-                    child: Text(
-                      'No hay tramos activos para la hora seleccionada.',
-                      textAlign: TextAlign.center,
+              if (activeTracks.isEmpty)
+                const Center(
+                  child: Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(14),
+                      child: Text(
+                        'No hay tramos activos para la hora seleccionada.',
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         );
       },
     );
+  }
+
+  String _closestSchedulePointName(
+    List<SchedulePoint> timedSchedule,
+    List<_TimedRoutePoint> timedRoutePoints,
+    double headIndex,
+  ) {
+    if (timedSchedule.isEmpty || timedRoutePoints.isEmpty) {
+      return 'Punto de paso';
+    }
+
+    var bestIndex = 0;
+    var bestDistance = double.infinity;
+    for (var i = 0; i < timedRoutePoints.length; i++) {
+      final distance = (timedRoutePoints[i].routeIndex - headIndex).abs();
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestIndex = i;
+      }
+    }
+
+    final name = timedSchedule[bestIndex].name.trim();
+    return name.isEmpty ? 'Punto de paso' : name;
+  }
+}
+
+class _MapPointCallout {
+  const _MapPointCallout({
+    required this.label,
+    required this.x,
+    required this.y,
+    required this.latitude,
+    required this.longitude,
+  });
+
+  final String label;
+  final double x;
+  final double y;
+  final double? latitude;
+  final double? longitude;
+}
+
+class _RouteLegendItem {
+  const _RouteLegendItem({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+}
+
+class _RouteLegendChip extends StatelessWidget {
+  const _RouteLegendChip({required this.item});
+
+  final _RouteLegendItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 18,
+          height: 4,
+          decoration: BoxDecoration(
+            color: item.color,
+            borderRadius: BorderRadius.circular(999),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          item.label,
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
+}
+
+class _CalloutArrowPainter extends CustomPainter {
+  const _CalloutArrowPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, ui.Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..lineTo(size.width, 0)
+      ..close();
+
+    canvas.drawShadow(path, Colors.black.withValues(alpha: 0.18), 2, false);
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _CalloutArrowPainter oldDelegate) {
+    return oldDelegate.color != color;
   }
 }
 
@@ -1938,7 +2627,9 @@ class _DayPlanningTabState extends State<_DayPlanningTab> {
                         else
                           MapWidget(
                             key: const ValueKey('day-planning-mapbox-map'),
-                            styleUri: kMapboxStyleUri,
+                            styleUri: mapboxStyleUriForBrightness(
+                              Theme.of(context).brightness,
+                            ),
                             gestureRecognizers: kMapGestureRecognizers,
                             cameraOptions: CameraOptions(
                               center: defaultSevillePoint().toPoint(),
@@ -2028,6 +2719,7 @@ class _ActiveTrack {
     required this.color,
     required this.points,
     required this.head,
+    required this.locationLabel,
   });
 
   final String brotherhoodSlug;
@@ -2035,13 +2727,11 @@ class _ActiveTrack {
   final Color color;
   final List<MapPoint> points;
   final MapPoint head;
+  final String locationLabel;
 }
 
 class _VisibleRoute {
-  const _VisibleRoute({
-    required this.color,
-    required this.points,
-  });
+  const _VisibleRoute({required this.color, required this.points});
 
   final Color color;
   final List<MapPoint> points;

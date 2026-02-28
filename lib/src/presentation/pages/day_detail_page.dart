@@ -310,6 +310,7 @@ class _ProcessionCard extends StatelessWidget {
                           title: event.brotherhoodName,
                           colorHex: event.brotherhoodColorHex,
                           routePoints: event.routePoints,
+                          routeSections: event.routeSections,
                           schedulePoints: event.schedulePoints,
                           status: event.status,
                         ),

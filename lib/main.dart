@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
+import 'src/analytics/app_analytics.dart';
 import 'src/app.dart';
 import 'src/config/app_config.dart';
 import 'src/data/api/api_client.dart';
@@ -20,6 +21,7 @@ Future<void> main() async {
   await initializeDateFormatting('es_ES');
 
   final config = AppConfig.fromEnvironment();
+  final analytics = await AppAnalytics.create(config);
   final appDatabase = AppDatabase();
   final repository = LareviraRepository(
     apiClient: ApiClient(baseUrl: config.baseUrl),
@@ -39,6 +41,7 @@ Future<void> main() async {
 
   runApp(
     LaReviraApp(
+      analytics: analytics,
       favoritesController: favoritesController,
       planningController: planningController,
       offlineSyncController: offlineSyncController,
@@ -49,4 +52,6 @@ Future<void> main() async {
       config: config,
     ),
   );
+
+  analytics?.track('app_open');
 }

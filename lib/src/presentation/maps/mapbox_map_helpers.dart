@@ -12,6 +12,10 @@ const String kMapboxStyleUri = String.fromEnvironment(
   'MAPBOX_STYLE_URI',
   defaultValue: 'mapbox://styles/mapbox/streets-v12',
 );
+const String kMapboxDarkStyleUri = String.fromEnvironment(
+  'MAPBOX_DARK_STYLE_URI',
+  defaultValue: 'mapbox://styles/mapbox/dark-v11',
+);
 final Set<Factory<OneSequenceGestureRecognizer>> kMapGestureRecognizers = {
   Factory<EagerGestureRecognizer>(EagerGestureRecognizer.new),
 };
@@ -112,4 +116,8 @@ void configureMapboxTokenIfPresent() {
   if (kMapboxAccessToken.isNotEmpty) {
     MapboxOptions.setAccessToken(kMapboxAccessToken);
   }
+}
+
+String mapboxStyleUriForBrightness(Brightness brightness) {
+  return brightness == Brightness.dark ? kMapboxDarkStyleUri : kMapboxStyleUri;
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 import '../../data/models/day_detail_model.dart';
+import '../../data/models/route_section_model.dart';
 import '../live/status_style.dart';
 import '../maps/mapbox_map_helpers.dart';
 import '../utils/color_utils.dart';
@@ -13,6 +14,7 @@ class ProcessionMapPage extends StatefulWidget {
     required this.title,
     required this.colorHex,
     required this.routePoints,
+    required this.routeSections,
     required this.schedulePoints,
     required this.status,
   });
@@ -20,6 +22,7 @@ class ProcessionMapPage extends StatefulWidget {
   final String title;
   final String colorHex;
   final List<GeoPoint> routePoints;
+  final List<RouteSection> routeSections;
   final List<SchedulePoint> schedulePoints;
   final String status;
 
@@ -37,6 +40,30 @@ class _ProcessionMapPageState extends State<ProcessionMapPage> {
       .map(
         (point) =>
             MapPoint(latitude: point.latitude!, longitude: point.longitude!),
+      )
+      .toList(growable: false);
+
+  List<_MapRouteSection> get _officialCourseSections => widget.routeSections
+      .map(
+        (section) => _MapRouteSection(
+          color: parseKmlAbgrColor(
+            section.lineColorKml,
+            fallback: kOfficialCourseFallbackColor,
+          ),
+          isOfficialCourse: isOfficialCourseSectionName(section.name),
+          points: section.points
+              .where((point) => point.hasLocation)
+              .map(
+                (point) => MapPoint(
+                  latitude: point.latitude!,
+                  longitude: point.longitude!,
+                ),
+              )
+              .toList(growable: false),
+        ),
+      )
+      .where(
+        (section) => section.isOfficialCourse && section.points.length >= 2,
       )
       .toList(growable: false);
 
@@ -79,6 +106,20 @@ class _ProcessionMapPageState extends State<ProcessionMapPage> {
           ),
           lineColor: color.toARGB32(),
           lineWidth: 5,
+        ),
+      );
+    }
+
+    for (final section in _officialCourseSections) {
+      await polylineManager.create(
+        PolylineAnnotationOptions(
+          geometry: LineString(
+            coordinates: section.points
+                .map((point) => point.toPoint().coordinates)
+                .toList(growable: false),
+          ),
+          lineColor: section.color.withAlpha(160).toARGB32(),
+          lineWidth: 4,
         ),
       );
     }
@@ -130,7 +171,9 @@ class _ProcessionMapPageState extends State<ProcessionMapPage> {
           else
             MapWidget(
               key: const ValueKey('procession-mapbox-map'),
-              styleUri: kMapboxStyleUri,
+              styleUri: mapboxStyleUriForBrightness(
+                Theme.of(context).brightness,
+              ),
               gestureRecognizers: kMapGestureRecognizers,
               cameraOptions: _initialCamera,
               onMapCreated: _onMapCreated,
@@ -193,4 +236,16 @@ class _ProcessionMapPageState extends State<ProcessionMapPage> {
       ),
     );
   }
+}
+
+class _MapRouteSection {
+  const _MapRouteSection({
+    required this.color,
+    required this.isOfficialCourse,
+    required this.points,
+  });
+
+  final Color color;
+  final bool isOfficialCourse;
+  final List<MapPoint> points;
 }

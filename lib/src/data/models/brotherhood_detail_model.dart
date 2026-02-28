@@ -1,3 +1,5 @@
+import 'route_section_model.dart';
+
 class BrotherhoodDetail {
   const BrotherhoodDetail({
     required this.name,
@@ -17,6 +19,7 @@ class BrotherhoodDetail {
     required this.departureAt,
     required this.routeDescription,
     required this.routePoints,
+    required this.routeSections,
     required this.itineraryPoints,
   });
 
@@ -37,6 +40,7 @@ class BrotherhoodDetail {
   final DateTime? departureAt;
   final String routeDescription;
   final List<BrotherhoodRoutePoint> routePoints;
+  final List<RouteSection> routeSections;
   final List<BrotherhoodItineraryPoint> itineraryPoints;
 
   factory BrotherhoodDetail.fromJson(Map<String, dynamic> json) {
@@ -56,6 +60,8 @@ class BrotherhoodDetail {
         (itinerary['path_points'] as List<dynamic>? ?? const []);
     final rawRoutePolyline =
         (itinerary['polyline'] as List<dynamic>? ?? const []);
+    final rawRouteSections =
+        (itinerary['route_sections'] as List<dynamic>? ?? const []);
     final schedulePoints =
         (itinerary['schedule_points'] as List<dynamic>? ?? const []);
 
@@ -94,11 +100,18 @@ class BrotherhoodDetail {
       departureAt: departureAt,
       routeDescription: (itinerary['description'] ?? '') as String,
       routePoints:
-          (rawRoutePathPoints.isNotEmpty ? rawRoutePathPoints : rawRoutePolyline)
+          (rawRoutePathPoints.isNotEmpty
+                  ? rawRoutePathPoints
+                  : rawRoutePolyline)
               .whereType<Map<String, dynamic>>()
               .map(BrotherhoodRoutePoint.fromJson)
               .where((point) => point.hasLocation)
               .toList(growable: false),
+      routeSections: rawRouteSections
+          .whereType<Map<String, dynamic>>()
+          .map(RouteSection.fromJson)
+          .where((section) => section.points.length >= 2)
+          .toList(growable: false),
       itineraryPoints: schedulePoints
           .whereType<Map<String, dynamic>>()
           .map(BrotherhoodItineraryPoint.fromJson)

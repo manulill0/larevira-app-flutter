@@ -46,6 +46,8 @@
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>La Revira necesita acceso a red local para sincronizar datos con tu servidor en desarrollo.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>La Revira necesita tu ubicacion para mostrar tu posicion en el mapa de la jornada.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

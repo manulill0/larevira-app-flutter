@@ -7,6 +7,9 @@ import '../../data/models/day_models.dart';
 import '../../data/repositories/larevira_repository.dart';
 
 class OfflineSyncController extends ChangeNotifier {
+  static const int _maxConcurrentSyncTasks = 4;
+  static const int _progressNotifyStride = 3;
+
   OfflineSyncController._({
     required this.repository,
     required this.config,
@@ -54,7 +57,8 @@ class OfflineSyncController extends ChangeNotifier {
     }
 
     final now = DateTime.now();
-    final shouldSync = lastSyncedAt == null ||
+    final shouldSync =
+        lastSyncedAt == null ||
         now.difference(lastSyncedAt!) > const Duration(hours: 12);
 
     if (shouldSync) {
@@ -91,24 +95,27 @@ class OfflineSyncController extends ChangeNotifier {
         daysByMode[mode] = days;
       }
 
-      totalSteps = brotherhoods.length +
+      totalSteps =
+          brotherhoods.length +
           daysByMode.values.fold<int>(0, (sum, v) => sum + v.length);
       notifyListeners();
 
       await _syncBrotherhoodDetails(brotherhoods);
 
+      final syncDayTasks = <Future<void> Function()>[];
       for (final entry in daysByMode.entries) {
         for (final day in entry.value) {
-          await repository.syncDayBrotherhoods(
-            citySlug: config.citySlug,
-            year: config.editionYear,
-            daySlug: day.slug,
-            mode: entry.key,
-          );
-          completedSteps += 1;
-          notifyListeners();
+          syncDayTasks.add(() async {
+            await repository.syncDayBrotherhoods(
+              citySlug: config.citySlug,
+              year: config.editionYear,
+              daySlug: day.slug,
+              mode: entry.key,
+            );
+          });
         }
       }
+      await _runSyncTasks(syncDayTasks);
 
       lastSyncedAt = DateTime.now();
       await _prefs.setString(_lastSyncKey, lastSyncedAt!.toIso8601String());
@@ -120,18 +127,52 @@ class OfflineSyncController extends ChangeNotifier {
     }
   }
 
-  Future<void> _syncBrotherhoodDetails(List<BrotherhoodItem> brotherhoods) async {
-    for (final brotherhood in brotherhoods) {
-      try {
-        await repository.syncBrotherhoodDetail(
+  Future<void> _syncBrotherhoodDetails(
+    List<BrotherhoodItem> brotherhoods,
+  ) async {
+    await _runSyncTasks(
+      brotherhoods.map((brotherhood) {
+        return () => repository.syncBrotherhoodDetail(
           citySlug: config.citySlug,
           year: config.editionYear,
           brotherhoodSlug: brotherhood.slug,
         );
-      } finally {
-        completedSteps += 1;
-        notifyListeners();
-      }
+      }),
+    );
+  }
+
+  Future<void> _runSyncTasks(Iterable<Future<void> Function()> tasks) async {
+    final pending = tasks.toList(growable: false);
+    if (pending.isEmpty) {
+      return;
+    }
+
+    final batchSize = pending.length < _maxConcurrentSyncTasks
+        ? pending.length
+        : _maxConcurrentSyncTasks;
+
+    for (var start = 0; start < pending.length; start += batchSize) {
+      final end = (start + batchSize < pending.length)
+          ? start + batchSize
+          : pending.length;
+
+      await Future.wait(
+        pending.sublist(start, end).map((task) async {
+          try {
+            await task();
+          } finally {
+            _advanceProgress();
+          }
+        }),
+      );
+    }
+  }
+
+  void _advanceProgress() {
+    completedSteps += 1;
+    if (completedSteps == totalSteps ||
+        completedSteps % _progressNotifyStride == 0) {
+      notifyListeners();
     }
   }
 

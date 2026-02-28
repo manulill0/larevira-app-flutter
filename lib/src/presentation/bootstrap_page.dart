@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../analytics/app_analytics.dart';
 import '../config/app_config.dart';
 import '../data/repositories/larevira_repository.dart';
 import 'favorites/favorites_controller.dart';
@@ -15,6 +16,7 @@ import 'theme/theme_controller.dart';
 class BootstrapPage extends StatefulWidget {
   const BootstrapPage({
     super.key,
+    required this.analytics,
     required this.repository,
     required this.config,
     required this.favoritesController,
@@ -25,6 +27,7 @@ class BootstrapPage extends StatefulWidget {
     required this.simulatedClockController,
   });
 
+  final AppAnalytics? analytics;
   final LareviraRepository repository;
   final AppConfig config;
   final FavoritesController favoritesController;
@@ -69,6 +72,15 @@ class _BootstrapPageState extends State<BootstrapPage>
       Future<void>.delayed(const Duration(milliseconds: 900)),
     ]);
 
+    widget.analytics?.track(
+      'bootstrap_completed',
+      parameters: <String, Object>{
+        'used_cached_data': widget.offlineSyncController.lastError != null
+            ? 1
+            : 0,
+      },
+    );
+
     if (!mounted) {
       return;
     }
@@ -79,6 +91,7 @@ class _BootstrapPageState extends State<BootstrapPage>
   Widget build(BuildContext context) {
     if (_ready) {
       return HomeShell(
+        analytics: widget.analytics,
         repository: widget.repository,
         config: widget.config,
         favoritesController: widget.favoritesController,

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 
+import '../analytics/app_analytics.dart';
 import '../config/app_config.dart';
 import '../data/repositories/larevira_repository.dart';
 import 'favorites/favorites_controller.dart';
@@ -21,6 +22,7 @@ import 'theme/theme_controller.dart';
 class HomeShell extends StatefulWidget {
   const HomeShell({
     super.key,
+    required this.analytics,
     required this.repository,
     required this.config,
     required this.favoritesController,
@@ -31,6 +33,7 @@ class HomeShell extends StatefulWidget {
     required this.simulatedClockController,
   });
 
+  final AppAnalytics? analytics;
   final LareviraRepository repository;
   final AppConfig config;
   final FavoritesController favoritesController;
@@ -45,6 +48,14 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
+  static const _screenNames = <String>[
+    'today',
+    'days',
+    'planning',
+    'brotherhoods',
+    'more',
+  ];
+
   int _index = 0;
   final AppLinks _appLinks = AppLinks();
   StreamSubscription<Uri>? _deepLinkSubscription;
@@ -53,6 +64,7 @@ class _HomeShellState extends State<HomeShell> {
   void initState() {
     super.initState();
     _initDeepLinks();
+    _trackCurrentScreen();
   }
 
   @override
@@ -83,6 +95,13 @@ class _HomeShellState extends State<HomeShell> {
             .map(PlanningEntry.fromJson)
             .toList(growable: false);
         final inserted = await widget.planningController.upsertAll(entries);
+        widget.analytics?.track(
+          'planning_imported_from_slug',
+          parameters: <String, Object>{
+            'share_slug': shareSlug,
+            'inserted': inserted,
+          },
+        );
         if (!mounted) {
           return;
         }
@@ -97,6 +116,10 @@ class _HomeShellState extends State<HomeShell> {
           ),
         );
       } catch (_) {
+        widget.analytics?.track(
+          'planning_import_failed',
+          parameters: const <String, Object>{'source': 'slug'},
+        );
         if (!mounted) {
           return;
         }
@@ -119,6 +142,10 @@ class _HomeShellState extends State<HomeShell> {
     }
 
     final inserted = await widget.planningController.upsertAll(decoded.entries);
+    widget.analytics?.track(
+      'planning_imported_from_payload',
+      parameters: <String, Object>{'inserted': inserted},
+    );
     if (!mounted) {
       return;
     }
@@ -132,6 +159,22 @@ class _HomeShellState extends State<HomeShell> {
         ),
       ),
     );
+  }
+
+  void _onDestinationSelected(int value) {
+    if (_index == value) {
+      return;
+    }
+    setState(() => _index = value);
+    _trackCurrentScreen();
+  }
+
+  void _trackCurrentScreen() {
+    final analytics = widget.analytics;
+    if (analytics == null) {
+      return;
+    }
+    analytics.trackScreen(_screenNames[_index]);
   }
 
   @override
@@ -180,7 +223,7 @@ class _HomeShellState extends State<HomeShell> {
       bottomNavigationBar: NavigationBar(
         height: 72,
         selectedIndex: _index,
-        onDestinationSelected: (value) => setState(() => _index = value),
+        onDestinationSelected: _onDestinationSelected,
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),

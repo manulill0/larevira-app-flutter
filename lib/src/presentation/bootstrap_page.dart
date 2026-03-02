@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../analytics/app_analytics.dart';
 import '../config/app_config.dart';
 import '../data/repositories/larevira_repository.dart';
+import '../live/live_update_controller.dart';
 import 'favorites/favorites_controller.dart';
 import 'home_shell.dart';
 import 'mode/mode_controller.dart';
@@ -20,6 +21,7 @@ class BootstrapPage extends StatefulWidget {
     required this.repository,
     required this.config,
     required this.favoritesController,
+    required this.liveUpdateController,
     required this.planningController,
     required this.offlineSyncController,
     required this.modeController,
@@ -31,6 +33,7 @@ class BootstrapPage extends StatefulWidget {
   final LareviraRepository repository;
   final AppConfig config;
   final FavoritesController favoritesController;
+  final LiveUpdateController liveUpdateController;
   final PlanningController planningController;
   final OfflineSyncController offlineSyncController;
   final ModeController modeController;
@@ -95,6 +98,7 @@ class _BootstrapPageState extends State<BootstrapPage>
         repository: widget.repository,
         config: widget.config,
         favoritesController: widget.favoritesController,
+        liveUpdateController: widget.liveUpdateController,
         planningController: widget.planningController,
         offlineSyncController: widget.offlineSyncController,
         modeController: widget.modeController,

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../analytics/app_analytics.dart';
 import '../config/app_config.dart';
 import '../data/repositories/larevira_repository.dart';
+import '../live/live_update_controller.dart';
 import 'favorites/favorites_controller.dart';
 import 'mode/mode_controller.dart';
 import 'offline/offline_sync_controller.dart';
@@ -26,6 +27,7 @@ class HomeShell extends StatefulWidget {
     required this.repository,
     required this.config,
     required this.favoritesController,
+    required this.liveUpdateController,
     required this.planningController,
     required this.offlineSyncController,
     required this.modeController,
@@ -37,6 +39,7 @@ class HomeShell extends StatefulWidget {
   final LareviraRepository repository;
   final AppConfig config;
   final FavoritesController favoritesController;
+  final LiveUpdateController liveUpdateController;
   final PlanningController planningController;
   final OfflineSyncController offlineSyncController;
   final ModeController modeController;
@@ -47,7 +50,7 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   static const _screenNames = <String>[
     'today',
     'days',
@@ -63,14 +66,24 @@ class _HomeShellState extends State<HomeShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initDeepLinks();
+    unawaited(widget.liveUpdateController.syncPendingUpdateIfAny());
     _trackCurrentScreen();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _deepLinkSubscription?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(widget.liveUpdateController.syncPendingUpdateIfAny());
+    }
   }
 
   Future<void> _initDeepLinks() async {
@@ -184,6 +197,7 @@ class _HomeShellState extends State<HomeShell> {
         repository: widget.repository,
         config: widget.config,
         favoritesController: widget.favoritesController,
+        liveUpdateController: widget.liveUpdateController,
         simulatedClockController: widget.simulatedClockController,
         modeController: widget.modeController,
       ),
@@ -191,6 +205,7 @@ class _HomeShellState extends State<HomeShell> {
         repository: widget.repository,
         config: widget.config,
         favoritesController: widget.favoritesController,
+        liveUpdateController: widget.liveUpdateController,
         planningController: widget.planningController,
         simulatedClockController: widget.simulatedClockController,
         modeController: widget.modeController,
@@ -199,6 +214,7 @@ class _HomeShellState extends State<HomeShell> {
         repository: widget.repository,
         config: widget.config,
         favoritesController: widget.favoritesController,
+        liveUpdateController: widget.liveUpdateController,
         planningController: widget.planningController,
         simulatedClockController: widget.simulatedClockController,
         modeController: widget.modeController,

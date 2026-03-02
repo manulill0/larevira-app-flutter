@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -5,6 +7,7 @@ import '../../config/app_config.dart';
 import '../../data/models/brotherhood_model.dart';
 import '../../data/models/day_models.dart';
 import '../../data/repositories/larevira_repository.dart';
+import '../../live/live_update_controller.dart';
 import '../favorites/favorites_controller.dart';
 import '../mode/mode_controller.dart';
 import '../time/simulated_clock_controller.dart';
@@ -19,6 +22,7 @@ class TodayPage extends StatefulWidget {
     required this.repository,
     required this.config,
     required this.favoritesController,
+    required this.liveUpdateController,
     required this.simulatedClockController,
     required this.modeController,
   });
@@ -26,6 +30,7 @@ class TodayPage extends StatefulWidget {
   final LareviraRepository repository;
   final AppConfig config;
   final FavoritesController favoritesController;
+  final LiveUpdateController liveUpdateController;
   final SimulatedClockController simulatedClockController;
   final ModeController modeController;
 
@@ -37,6 +42,7 @@ class _TodayPageState extends State<TodayPage> {
   late Future<List<DayIndexItem>> _daysFuture;
   late Future<List<BrotherhoodItem>> _brotherhoodsFuture;
   late String _mode;
+  StreamSubscription<ProcessionStatusUpdate>? _updateSubscription;
   bool _syncing = false;
 
   @override
@@ -46,10 +52,23 @@ class _TodayPageState extends State<TodayPage> {
     widget.modeController.addListener(_onModeChanged);
     _daysFuture = _loadDays();
     _brotherhoodsFuture = _loadBrotherhoods();
+    _updateSubscription = widget.liveUpdateController.updates.listen((update) {
+      if (!mounted) {
+        return;
+      }
+      if (update.citySlug != widget.config.citySlug ||
+          update.year != widget.config.editionYear) {
+        return;
+      }
+      setState(() {
+        _daysFuture = _loadDays();
+      });
+    });
   }
 
   @override
   void dispose() {
+    _updateSubscription?.cancel();
     widget.modeController.removeListener(_onModeChanged);
     super.dispose();
   }
@@ -324,6 +343,8 @@ class _TodayPageState extends State<TodayPage> {
                                         mode: _mode,
                                         favoritesController:
                                             widget.favoritesController,
+                                        liveUpdateController:
+                                            widget.liveUpdateController,
                                       ),
                                     ),
                                   );

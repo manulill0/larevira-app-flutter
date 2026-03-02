@@ -39,6 +39,7 @@ dependencies:
   intl: ^0.20.2
   firebase_core: ^4.4.0
   firebase_analytics: ^12.1.2
+  firebase_messaging: ^16.0.4
   mapbox_maps_flutter: ^2.12.0
   permission_handler: ^11.4.0
   shared_preferences: ^2.5.3
@@ -46,6 +47,7 @@ dependencies:
   drift_flutter: ^0.2.5
   share_plus: ^11.1.0
   app_links: ^6.4.1
+  flutter_local_notifications: ^19.4.2
 
 dev_dependencies:
   flutter_test:

@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../config/app_config.dart';
 import '../../data/repositories/larevira_repository.dart';
 import '../favorites/favorites_controller.dart';
+import '../../live/live_update_controller.dart';
 import '../mode/mode_controller.dart';
 import '../planning/planning_controller.dart';
 import '../time/simulated_clock_controller.dart';
@@ -17,6 +18,7 @@ class PlanningPage extends StatefulWidget {
     required this.repository,
     required this.config,
     required this.favoritesController,
+    required this.liveUpdateController,
     required this.planningController,
     required this.simulatedClockController,
     required this.modeController,
@@ -25,6 +27,7 @@ class PlanningPage extends StatefulWidget {
   final LareviraRepository repository;
   final AppConfig config;
   final FavoritesController favoritesController;
+  final LiveUpdateController liveUpdateController;
   final PlanningController planningController;
   final SimulatedClockController simulatedClockController;
   final ModeController modeController;
@@ -324,6 +327,8 @@ class _PlanningPageState extends State<PlanningPage> {
                                         mode: _mode,
                                         repository: widget.repository,
                                         config: widget.config,
+                                        liveUpdateController:
+                                            widget.liveUpdateController,
                                         favoritesController:
                                             widget.favoritesController,
                                         planningController:

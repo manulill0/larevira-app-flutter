@@ -216,7 +216,31 @@ class LareviraRepository {
     required int year,
     required String daySlug,
     required String mode,
+    bool preferRemote = false,
   }) async {
+    if (preferRemote) {
+      try {
+        return await syncDayDetail(
+          citySlug: citySlug,
+          year: year,
+          daySlug: daySlug,
+          mode: mode,
+        );
+      } catch (_) {
+        final local = await _appDatabase.getDayDetail(
+          city: citySlug,
+          yearValue: year,
+          modeValue: mode,
+          daySlugValue: daySlug,
+        );
+        if (local != null) {
+          return local;
+        }
+
+        rethrow;
+      }
+    }
+
     final local = await _appDatabase.getDayDetail(
       city: citySlug,
       yearValue: year,
@@ -237,6 +261,21 @@ class LareviraRepository {
     } catch (_) {
       rethrow;
     }
+  }
+
+  Future<DayDetail> refreshDayDetail({
+    required String citySlug,
+    required int year,
+    required String daySlug,
+    required String mode,
+  }) async {
+    return getDayDetail(
+      citySlug: citySlug,
+      year: year,
+      daySlug: daySlug,
+      mode: mode,
+      preferRemote: true,
+    );
   }
 
   Future<DayDetail> syncDayDetail({
@@ -345,5 +384,24 @@ class LareviraRepository {
     final entries = (data['entries'] as List<dynamic>? ?? const []);
 
     return entries.whereType<Map<String, dynamic>>().toList(growable: false);
+  }
+
+  Future<void> registerPushToken({
+    required String installationId,
+    required String token,
+    required String platform,
+    required String citySlug,
+    required int year,
+  }) async {
+    await _apiClient.post(
+      '/push-tokens',
+      data: {
+        'installation_id': installationId,
+        'token': token,
+        'platform': platform,
+        'city_slug': citySlug,
+        'year': year,
+      },
+    );
   }
 }

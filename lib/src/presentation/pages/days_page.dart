@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../config/app_config.dart';
 import '../../data/models/day_models.dart';
 import '../../data/repositories/larevira_repository.dart';
+import '../../live/live_update_controller.dart';
 import '../favorites/favorites_controller.dart';
 import '../mode/mode_controller.dart';
 import '../planning/planning_controller.dart';
@@ -18,6 +21,7 @@ class DaysPage extends StatefulWidget {
     required this.repository,
     required this.config,
     required this.favoritesController,
+    required this.liveUpdateController,
     required this.planningController,
     required this.simulatedClockController,
     required this.modeController,
@@ -26,6 +30,7 @@ class DaysPage extends StatefulWidget {
   final LareviraRepository repository;
   final AppConfig config;
   final FavoritesController favoritesController;
+  final LiveUpdateController liveUpdateController;
   final PlanningController planningController;
   final SimulatedClockController simulatedClockController;
   final ModeController modeController;
@@ -37,6 +42,7 @@ class DaysPage extends StatefulWidget {
 class _DaysPageState extends State<DaysPage> {
   late String _mode;
   late Future<List<DayIndexItem>> _daysFuture;
+  StreamSubscription<ProcessionStatusUpdate>? _updateSubscription;
   String? _selectedDaySlug;
 
   @override
@@ -45,10 +51,23 @@ class _DaysPageState extends State<DaysPage> {
     _mode = widget.modeController.mode;
     widget.modeController.addListener(_onModeChanged);
     _daysFuture = _loadDays();
+    _updateSubscription = widget.liveUpdateController.updates.listen((update) {
+      if (!mounted) {
+        return;
+      }
+      if (update.citySlug != widget.config.citySlug ||
+          update.year != widget.config.editionYear) {
+        return;
+      }
+      setState(() {
+        _daysFuture = _loadDays();
+      });
+    });
   }
 
   @override
   void dispose() {
+    _updateSubscription?.cancel();
     widget.modeController.removeListener(_onModeChanged);
     super.dispose();
   }
@@ -185,6 +204,8 @@ class _DaysPageState extends State<DaysPage> {
                                       mode: _mode,
                                       repository: widget.repository,
                                       config: widget.config,
+                                      liveUpdateController:
+                                          widget.liveUpdateController,
                                       favoritesController:
                                           widget.favoritesController,
                                       planningController:
@@ -217,6 +238,8 @@ class _DaysPageState extends State<DaysPage> {
                                 mode: _mode,
                                 repository: widget.repository,
                                 config: widget.config,
+                                liveUpdateController:
+                                    widget.liveUpdateController,
                                 favoritesController: widget.favoritesController,
                                 planningController: widget.planningController,
                                 simulatedClockController:

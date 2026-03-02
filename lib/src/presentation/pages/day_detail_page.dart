@@ -8,6 +8,7 @@ import '../../data/models/day_detail_model.dart';
 import '../../data/repositories/larevira_repository.dart';
 import '../favorites/favorites_controller.dart';
 import '../live/status_style.dart';
+import '../../live/live_update_controller.dart';
 import '../utils/color_utils.dart';
 import '../widgets/app_scaffold_background.dart';
 import 'procession_map_page.dart';
@@ -21,6 +22,7 @@ class DayDetailPage extends StatefulWidget {
     required this.config,
     required this.mode,
     required this.favoritesController,
+    required this.liveUpdateController,
     this.embedded = false,
   });
 
@@ -30,6 +32,7 @@ class DayDetailPage extends StatefulWidget {
   final LareviraRepository repository;
   final AppConfig config;
   final FavoritesController favoritesController;
+  final LiveUpdateController liveUpdateController;
   final bool embedded;
 
   @override
@@ -37,62 +40,80 @@ class DayDetailPage extends StatefulWidget {
 }
 
 class _DayDetailPageState extends State<DayDetailPage> {
-  static const _refreshInterval = Duration(seconds: 45);
-
   Future<DayDetail>? _future;
-  Timer? _timer;
-  bool _autoRefresh = false;
+  StreamSubscription<ProcessionStatusUpdate>? _updateSubscription;
+  bool _refreshInFlight = false;
   DateTime? _lastUpdatedAt;
-
-  bool get _supportsLive => widget.mode == 'live';
 
   @override
   void initState() {
     super.initState();
     _future = _load();
-    _syncTimer();
+    _updateSubscription = widget.liveUpdateController.updates.listen((update) {
+      if (!mounted) {
+        return;
+      }
+      if (!update.matchesDay(
+        citySlug: widget.config.citySlug,
+        year: widget.config.editionYear,
+        daySlug: widget.daySlug,
+      )) {
+        return;
+      }
+      _refreshNow();
+    });
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _updateSubscription?.cancel();
     super.dispose();
   }
 
-  Future<DayDetail> _load() async {
+  Future<DayDetail> _load({bool preferRemote = false}) async {
     final detail = await widget.repository.getDayDetail(
       citySlug: widget.config.citySlug,
       year: widget.config.editionYear,
       daySlug: widget.daySlug,
       mode: widget.mode,
+      preferRemote: preferRemote,
     );
     _lastUpdatedAt = DateTime.now();
     return detail;
   }
 
-  void _syncTimer() {
-    _timer?.cancel();
-    if (!_autoRefresh || !_supportsLive) {
+  Future<void> _manualRefresh() async {
+    await _refreshNow();
+  }
+
+  Future<void> _refreshNow() async {
+    if (_refreshInFlight) {
       return;
     }
-    _timer = Timer.periodic(_refreshInterval, (timer) {
+
+    _refreshInFlight = true;
+
+    try {
+      final detail = await widget.repository.refreshDayDetail(
+        citySlug: widget.config.citySlug,
+        year: widget.config.editionYear,
+        daySlug: widget.daySlug,
+        mode: widget.mode,
+      );
+
       if (!mounted) {
         return;
       }
-      setState(() => _future = _load());
-    });
-  }
 
-  void _toggleAutoRefresh() {
-    setState(() {
-      _autoRefresh = !_autoRefresh;
-      _syncTimer();
-    });
-  }
-
-  Future<void> _manualRefresh() async {
-    setState(() => _future = _load());
-    await _future;
+      setState(() {
+        _future = Future<DayDetail>.value(detail);
+        _lastUpdatedAt = DateTime.now();
+      });
+    } catch (_) {
+      // Conservamos los datos visibles si no hay red.
+    } finally {
+      _refreshInFlight = false;
+    }
   }
 
   @override
@@ -167,14 +188,6 @@ class _DayDetailPageState extends State<DayDetailPage> {
                           ? 'Sin actualizar'
                           : 'Última actualización ${DateFormat('HH:mm:ss').format(_lastUpdatedAt!)}',
                     ),
-                    if (_supportsLive) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        _autoRefresh
-                            ? 'Seguimiento en vivo activo (cada 45s).'
-                            : 'Seguimiento en vivo en pausa para ahorrar datos.',
-                      ),
-                    ],
                     const SizedBox(height: 12),
                     for (final event in orderedEvents) ...[
                       _ProcessionCard(
@@ -204,17 +217,11 @@ class _DayDetailPageState extends State<DayDetailPage> {
       appBar: AppBar(
         title: Text(widget.title),
         actions: [
-          if (_supportsLive)
-            IconButton(
-              tooltip: _autoRefresh
-                  ? 'Pausar auto refresh'
-                  : 'Activar auto refresh',
-              onPressed: _toggleAutoRefresh,
-              icon: Icon(_autoRefresh ? Icons.pause_circle : Icons.play_circle),
-            ),
           IconButton(
             tooltip: 'Actualizar ahora',
-            onPressed: () => setState(() => _future = _load()),
+            onPressed: () {
+              _refreshNow();
+            },
             icon: const Icon(Icons.refresh),
           ),
         ],

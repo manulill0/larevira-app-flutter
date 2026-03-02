@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'analytics/app_analytics.dart';
 import 'config/app_config.dart';
 import 'data/repositories/larevira_repository.dart';
+import 'live/live_update_controller.dart';
 import 'presentation/bootstrap_page.dart';
 import 'presentation/favorites/favorites_controller.dart';
 import 'presentation/mode/mode_controller.dart';
@@ -18,6 +19,7 @@ class LaReviraApp extends StatelessWidget {
     super.key,
     required this.analytics,
     required this.favoritesController,
+    required this.liveUpdateController,
     required this.planningController,
     required this.offlineSyncController,
     required this.modeController,
@@ -29,6 +31,7 @@ class LaReviraApp extends StatelessWidget {
 
   final AppAnalytics? analytics;
   final FavoritesController favoritesController;
+  final LiveUpdateController liveUpdateController;
   final PlanningController planningController;
   final OfflineSyncController offlineSyncController;
   final ModeController modeController;
@@ -63,6 +66,7 @@ class LaReviraApp extends StatelessWidget {
             repository: repository,
             config: config,
             favoritesController: favoritesController,
+            liveUpdateController: liveUpdateController,
             planningController: planningController,
             offlineSyncController: offlineSyncController,
             modeController: modeController,

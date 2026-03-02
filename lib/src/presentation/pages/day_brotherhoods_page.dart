@@ -11,6 +11,7 @@ import '../../config/app_config.dart';
 import '../../data/models/day_detail_model.dart';
 import '../../data/repositories/larevira_repository.dart';
 import '../favorites/favorites_controller.dart';
+import '../../live/live_update_controller.dart';
 import '../live/status_style.dart';
 import '../maps/mapbox_map_helpers.dart';
 import '../planning/planning_controller.dart';
@@ -29,6 +30,7 @@ class DayBrotherhoodsPage extends StatefulWidget {
     required this.repository,
     required this.config,
     required this.favoritesController,
+    required this.liveUpdateController,
     required this.planningController,
     required this.simulatedClockController,
     this.initialTabIndex = 0,
@@ -41,6 +43,7 @@ class DayBrotherhoodsPage extends StatefulWidget {
   final LareviraRepository repository;
   final AppConfig config;
   final FavoritesController favoritesController;
+  final LiveUpdateController liveUpdateController;
   final PlanningController planningController;
   final SimulatedClockController simulatedClockController;
   final int initialTabIndex;
@@ -54,6 +57,8 @@ class _DayBrotherhoodsPageState extends State<DayBrotherhoodsPage> {
   late int _selectedIndex;
   late Future<DayDetail> _future;
   late _DayTimeController _dayTimeController;
+  StreamSubscription<ProcessionStatusUpdate>? _updateSubscription;
+  bool _refreshInFlight = false;
 
   @override
   void initState() {
@@ -61,6 +66,7 @@ class _DayBrotherhoodsPageState extends State<DayBrotherhoodsPage> {
     _selectedIndex = widget.initialTabIndex.clamp(0, 3).toInt();
     _future = _load();
     _dayTimeController = _DayTimeController(widget.simulatedClockController);
+    _bindLiveUpdates();
   }
 
   @override
@@ -69,6 +75,10 @@ class _DayBrotherhoodsPageState extends State<DayBrotherhoodsPage> {
     if (oldWidget.simulatedClockController != widget.simulatedClockController) {
       _dayTimeController.dispose();
       _dayTimeController = _DayTimeController(widget.simulatedClockController);
+    }
+    if (oldWidget.liveUpdateController != widget.liveUpdateController) {
+      _updateSubscription?.cancel();
+      _bindLiveUpdates();
     }
     if (oldWidget.daySlug != widget.daySlug || oldWidget.mode != widget.mode) {
       setState(() {
@@ -81,17 +91,64 @@ class _DayBrotherhoodsPageState extends State<DayBrotherhoodsPage> {
 
   @override
   void dispose() {
+    _updateSubscription?.cancel();
     _dayTimeController.dispose();
     super.dispose();
   }
 
-  Future<DayDetail> _load() {
+  Future<DayDetail> _load({bool preferRemote = false}) {
     return widget.repository.getDayDetail(
       citySlug: widget.config.citySlug,
       year: widget.config.editionYear,
       daySlug: widget.daySlug,
       mode: widget.mode,
+      preferRemote: preferRemote,
     );
+  }
+
+  void _bindLiveUpdates() {
+    _updateSubscription = widget.liveUpdateController.updates.listen((update) {
+      if (!mounted) {
+        return;
+      }
+      if (!update.matchesDay(
+        citySlug: widget.config.citySlug,
+        year: widget.config.editionYear,
+        daySlug: widget.daySlug,
+      )) {
+        return;
+      }
+      _refreshNow();
+    });
+  }
+
+  Future<void> _refreshNow() async {
+    if (_refreshInFlight) {
+      return;
+    }
+
+    _refreshInFlight = true;
+
+    try {
+      final detail = await widget.repository.refreshDayDetail(
+        citySlug: widget.config.citySlug,
+        year: widget.config.editionYear,
+        daySlug: widget.daySlug,
+        mode: widget.mode,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _future = Future<DayDetail>.value(detail);
+      });
+    } catch (_) {
+      // Conservamos los datos visibles si no hay red.
+    } finally {
+      _refreshInFlight = false;
+    }
   }
 
   @override
@@ -185,7 +242,9 @@ class _DayBrotherhoodsPageState extends State<DayBrotherhoodsPage> {
                     const Spacer(),
                     IconButton(
                       tooltip: 'Actualizar',
-                      onPressed: () => setState(() => _future = _load()),
+                      onPressed: () {
+                        _refreshNow();
+                      },
                       icon: const Icon(Icons.refresh),
                     ),
                   ],
@@ -237,7 +296,9 @@ class _DayBrotherhoodsPageState extends State<DayBrotherhoodsPage> {
         actions: [
           IconButton(
             tooltip: 'Actualizar',
-            onPressed: () => setState(() => _future = _load()),
+            onPressed: () {
+              _refreshNow();
+            },
             icon: const Icon(Icons.refresh),
           ),
         ],
@@ -1221,7 +1282,6 @@ class _DayMapTabState extends State<_DayMapTab> {
   Timer? _pointCalloutTimer;
   String? _lastAnnotationSignature;
   String _selectedBrotherhoodSlug = 'all';
-  bool _showControls = false;
   bool _showLegend = false;
   bool _followUserLocation = false;
   final ValueNotifier<_MapPointCallout?> _pointCallout = ValueNotifier(null);
@@ -2035,39 +2095,18 @@ class _DayMapTabState extends State<_DayMapTab> {
                 left: 12,
                 right: 12,
                 bottom: 12,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_showControls)
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(10),
-                          child: _DayTimeSelectorCard(
-                            timeController: widget.timeController,
-                            compact: true,
-                            framed: false,
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.bottomLeft,
-                      child: FilledButton.tonalIcon(
-                        onPressed: () {
-                          setState(() => _showControls = !_showControls);
-                        },
-                        icon: Icon(
-                          _showControls ? Icons.expand_more : Icons.tune,
-                        ),
-                        label: Text(
-                          _showControls
-                              ? 'Ocultar controles'
-                              : 'Mostrar controles',
-                        ),
+                child: SafeArea(
+                  top: false,
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: _DayTimeSelectorCard(
+                        timeController: widget.timeController,
+                        compact: true,
+                        framed: false,
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
               if (activeTracks.isEmpty)

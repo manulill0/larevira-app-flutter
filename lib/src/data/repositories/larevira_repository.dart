@@ -5,6 +5,7 @@ import '../models/brotherhood_model.dart';
 import '../models/day_brotherhood_model.dart';
 import '../models/day_detail_model.dart';
 import '../models/day_models.dart';
+import '../models/sync_status.dart';
 
 class LareviraRepository {
   LareviraRepository({
@@ -15,6 +16,32 @@ class LareviraRepository {
 
   final ApiClient _apiClient;
   final AppDatabase _appDatabase;
+
+  Future<SyncStatus> fetchSyncStatus({
+    required String citySlug,
+    required int year,
+  }) async {
+    final response = await _apiClient.get('/$citySlug/$year/sync-status');
+    final payload = response.data as Map<String, dynamic>;
+    final data = (payload['data'] as Map<String, dynamic>? ?? const {});
+
+    return SyncStatus.fromJson(data);
+  }
+
+  Future<DateTime?> getLatestLocalCacheUpdatedAt({
+    required String citySlug,
+    required int year,
+  }) async {
+    final updatedAtMs = await _appDatabase.getLatestCacheUpdatedAtMs(
+      city: citySlug,
+      yearValue: year,
+    );
+    if (updatedAtMs == null) {
+      return null;
+    }
+
+    return DateTime.fromMillisecondsSinceEpoch(updatedAtMs);
+  }
 
   Future<List<DayIndexItem>> syncDays({
     required String citySlug,

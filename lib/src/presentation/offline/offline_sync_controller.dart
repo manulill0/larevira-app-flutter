@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/app_config.dart';
 import '../../data/models/brotherhood_model.dart';
 import '../../data/models/day_models.dart';
+import '../../data/models/sync_status.dart';
 import '../../data/repositories/larevira_repository.dart';
 
 class OfflineSyncController extends ChangeNotifier {
@@ -22,8 +23,10 @@ class OfflineSyncController extends ChangeNotifier {
   final SharedPreferencesAsync _prefs;
 
   static const _lastSyncKey = 'offline_last_sync_at_v1';
+  static const _lastSyncVersionKey = 'offline_last_sync_version_v1';
 
   DateTime? lastSyncedAt;
+  String? _lastSyncedVersion;
   bool isSyncing = false;
   String? lastError;
   int completedSteps = 0;
@@ -42,13 +45,14 @@ class OfflineSyncController extends ChangeNotifier {
   }) async {
     final prefs = SharedPreferencesAsync();
     final rawDate = await prefs.getString(_lastSyncKey);
+    final lastSyncedVersion = await prefs.getString(_lastSyncVersionKey);
 
     return OfflineSyncController._(
       repository: repository,
       config: config,
       prefs: prefs,
       lastSyncedAt: rawDate == null ? null : DateTime.tryParse(rawDate),
-    );
+    ).._lastSyncedVersion = lastSyncedVersion;
   }
 
   Future<void> maybeSyncOnStartup() async {
@@ -78,6 +82,24 @@ class OfflineSyncController extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final remoteSyncStatus = await repository.fetchSyncStatus(
+        citySlug: config.citySlug,
+        year: config.editionYear,
+      );
+      final latestLocalCacheUpdatedAt = await repository
+          .getLatestLocalCacheUpdatedAt(
+            citySlug: config.citySlug,
+            year: config.editionYear,
+          );
+
+      if (_shouldSkipRemoteDownload(
+        remoteSyncStatus: remoteSyncStatus,
+        latestLocalCacheUpdatedAt: latestLocalCacheUpdatedAt,
+      )) {
+        await _markSyncCheckpoint(version: remoteSyncStatus.version);
+        return;
+      }
+
       final brotherhoods = await repository.syncBrotherhoods(
         citySlug: config.citySlug,
         year: config.editionYear,
@@ -117,8 +139,7 @@ class OfflineSyncController extends ChangeNotifier {
       }
       await _runSyncTasks(syncDayTasks);
 
-      lastSyncedAt = DateTime.now();
-      await _prefs.setString(_lastSyncKey, lastSyncedAt!.toIso8601String());
+      await _markSyncCheckpoint(version: remoteSyncStatus.version);
     } catch (error) {
       lastError = error.toString();
     } finally {
@@ -176,6 +197,34 @@ class OfflineSyncController extends ChangeNotifier {
     }
   }
 
+  bool _shouldSkipRemoteDownload({
+    required SyncStatus remoteSyncStatus,
+    required DateTime? latestLocalCacheUpdatedAt,
+  }) {
+    if (latestLocalCacheUpdatedAt == null) {
+      return false;
+    }
+
+    if (remoteSyncStatus.version.isNotEmpty &&
+        remoteSyncStatus.version == _lastSyncedVersion) {
+      return true;
+    }
+
+    final remoteLastModifiedAt = remoteSyncStatus.lastModifiedAt;
+    if (remoteLastModifiedAt == null) {
+      return false;
+    }
+
+    return !remoteLastModifiedAt.isAfter(latestLocalCacheUpdatedAt);
+  }
+
+  Future<void> _markSyncCheckpoint({required String version}) async {
+    lastSyncedAt = DateTime.now();
+    _lastSyncedVersion = version;
+    await _prefs.setString(_lastSyncKey, lastSyncedAt!.toIso8601String());
+    await _prefs.setString(_lastSyncVersionKey, version);
+  }
+
   Future<void> clearLocalCache() async {
     if (isSyncing) {
       return;
@@ -188,7 +237,9 @@ class OfflineSyncController extends ChangeNotifier {
 
     await repository.clearAllLocalCache();
     lastSyncedAt = null;
+    _lastSyncedVersion = null;
     await _prefs.remove(_lastSyncKey);
+    await _prefs.remove(_lastSyncVersionKey);
     notifyListeners();
   }
 }

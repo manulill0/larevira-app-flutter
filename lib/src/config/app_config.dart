@@ -48,7 +48,7 @@ class AppConfig {
     const rawAndroidStoreUrl = String.fromEnvironment(
       'ANDROID_STORE_URL',
       defaultValue:
-          'https://play.google.com/store/apps/details?id=com.larevira.larevira_app_flutter',
+          'https://play.google.com/store/apps/details?id=com.iguanadev.larevira',
     );
     const rawIosStoreUrl = String.fromEnvironment(
       'IOS_STORE_URL',

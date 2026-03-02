@@ -1,4 +1,4 @@
-package com.larevira.larevira_app_flutter
+package com.iguanadev.larevira
 
 import io.flutter.embedding.android.FlutterActivity
 

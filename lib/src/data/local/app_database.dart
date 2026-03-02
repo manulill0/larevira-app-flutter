@@ -31,7 +31,8 @@ class DaysCache extends Table {
   TextColumn get slug => text()();
   TextColumn get name => text().nullable()();
   TextColumn get startsAt => text().nullable()();
-  IntColumn get processionEventsCount => integer().withDefault(const Constant(0))();
+  IntColumn get processionEventsCount =>
+      integer().withDefault(const Constant(0))();
   IntColumn get sortOrder => integer().nullable()();
   IntColumn get updatedAtMs => integer()();
 
@@ -53,12 +54,12 @@ class DayBrotherhoodsCache extends Table {
 
   @override
   Set<Column<Object>> get primaryKey => {
-        citySlug,
-        year,
-        mode,
-        daySlug,
-        brotherhoodSlug,
-      };
+    citySlug,
+    year,
+    mode,
+    daySlug,
+    brotherhoodSlug,
+  };
 }
 
 class DayDetailsCache extends Table {
@@ -101,16 +102,16 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (migrator) => migrator.createAll(),
-        onUpgrade: (migrator, from, to) async {
-          if (from < 2) {
-            await migrator.createTable(dayDetailsCache);
-          }
-          if (from < 3) {
-            await migrator.createTable(brotherhoodDetailsCache);
-          }
-        },
-      );
+    onCreate: (migrator) => migrator.createAll(),
+    onUpgrade: (migrator, from, to) async {
+      if (from < 2) {
+        await migrator.createTable(dayDetailsCache);
+      }
+      if (from < 3) {
+        await migrator.createTable(brotherhoodDetailsCache);
+      }
+    },
+  );
 
   Future<void> replaceBrotherhoods({
     required String city,
@@ -118,8 +119,9 @@ class AppDatabase extends _$AppDatabase {
     required List<BrotherhoodItem> items,
   }) async {
     await transaction(() async {
-      await (delete(brotherhoodsCache)
-            ..where((tbl) => tbl.citySlug.equals(city) & tbl.year.equals(yearValue)))
+      await (delete(brotherhoodsCache)..where(
+            (tbl) => tbl.citySlug.equals(city) & tbl.year.equals(yearValue),
+          ))
           .go();
 
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -172,13 +174,12 @@ class AppDatabase extends _$AppDatabase {
     required List<DayIndexItem> items,
   }) async {
     await transaction(() async {
-      await (delete(daysCache)
-            ..where(
-              (tbl) =>
-                  tbl.citySlug.equals(city) &
-                  tbl.year.equals(yearValue) &
-                  tbl.mode.equals(modeValue),
-            ))
+      await (delete(daysCache)..where(
+            (tbl) =>
+                tbl.citySlug.equals(city) &
+                tbl.year.equals(yearValue) &
+                tbl.mode.equals(modeValue),
+          ))
           .go();
 
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -225,7 +226,9 @@ class AppDatabase extends _$AppDatabase {
           (row) => DayIndexItem(
             slug: row.slug,
             name: row.name ?? 'Jornada',
-            startsAt: row.startsAt == null ? null : DateTime.tryParse(row.startsAt!),
+            startsAt: row.startsAt == null
+                ? null
+                : DateTime.tryParse(row.startsAt!),
             processionEventsCount: row.processionEventsCount,
           ),
         )
@@ -240,14 +243,13 @@ class AppDatabase extends _$AppDatabase {
     required List<DayBrotherhoodItem> items,
   }) async {
     await transaction(() async {
-      await (delete(dayBrotherhoodsCache)
-            ..where(
-              (tbl) =>
-                  tbl.citySlug.equals(city) &
-                  tbl.year.equals(yearValue) &
-                  tbl.mode.equals(modeValue) &
-                  tbl.daySlug.equals(daySlugValue),
-            ))
+      await (delete(dayBrotherhoodsCache)..where(
+            (tbl) =>
+                tbl.citySlug.equals(city) &
+                tbl.year.equals(yearValue) &
+                tbl.mode.equals(modeValue) &
+                tbl.daySlug.equals(daySlugValue),
+          ))
           .go();
 
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -397,6 +399,64 @@ class AppDatabase extends _$AppDatabase {
     } catch (_) {
       return null;
     }
+  }
+
+  Future<int?> getLatestCacheUpdatedAtMs({
+    required String city,
+    required int yearValue,
+  }) async {
+    final values = <int?>[
+      await _queryMaxUpdatedAtMs(
+        'brotherhoods_cache',
+        city: city,
+        yearValue: yearValue,
+      ),
+      await _queryMaxUpdatedAtMs(
+        'days_cache',
+        city: city,
+        yearValue: yearValue,
+      ),
+      await _queryMaxUpdatedAtMs(
+        'day_brotherhoods_cache',
+        city: city,
+        yearValue: yearValue,
+      ),
+      await _queryMaxUpdatedAtMs(
+        'day_details_cache',
+        city: city,
+        yearValue: yearValue,
+      ),
+      await _queryMaxUpdatedAtMs(
+        'brotherhood_details_cache',
+        city: city,
+        yearValue: yearValue,
+      ),
+    ].whereType<int>().toList(growable: false);
+
+    if (values.isEmpty) {
+      return null;
+    }
+
+    values.sort();
+    return values.last;
+  }
+
+  Future<int?> _queryMaxUpdatedAtMs(
+    String tableName, {
+    required String city,
+    required int yearValue,
+  }) async {
+    final result = await customSelect(
+      '''
+      SELECT MAX(updated_at_ms) AS max_updated_at_ms
+      FROM $tableName
+      WHERE city_slug = ? AND year = ?
+      ''',
+      variables: [Variable<String>(city), Variable<int>(yearValue)],
+      readsFrom: const {},
+    ).getSingle();
+
+    return result.read<int?>('max_updated_at_ms');
   }
 
   Future<void> clearAllCaches() async {

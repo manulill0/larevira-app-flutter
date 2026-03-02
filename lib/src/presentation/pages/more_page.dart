@@ -246,8 +246,10 @@ class MorePage extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Descargando ${offlineSyncController.completedSteps}/'
-                          '${offlineSyncController.totalSteps} paquetes...',
+                          offlineSyncController.totalSteps > 0
+                              ? 'Descargando ${offlineSyncController.completedSteps}/'
+                                    '${offlineSyncController.totalSteps} paquetes...'
+                              : 'Comprobando si hay cambios nuevos...',
                         ),
                       ],
                       if (offlineSyncController.lastError != null) ...[

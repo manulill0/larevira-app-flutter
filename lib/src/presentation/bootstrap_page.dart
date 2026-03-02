@@ -186,8 +186,10 @@ class _BootstrapPageState extends State<BootstrapPage>
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '${widget.offlineSyncController.completedSteps}/'
-                          '${widget.offlineSyncController.totalSteps} paquetes',
+                          widget.offlineSyncController.totalSteps > 0
+                              ? '${widget.offlineSyncController.completedSteps}/'
+                                    '${widget.offlineSyncController.totalSteps} paquetes'
+                              : 'Comprobando si hay datos nuevos...',
                         ),
                       ],
                       if (widget.offlineSyncController.lastError != null) ...[
